@@ -389,10 +389,10 @@ function Isometric3D({ data }) {
   if (!data) return null;
   const { overall_dimensions:od={}, components:comps=[] } = data;
   const OW=+od.width||800, OH=+od.height||750, OD=+od.depth||500;
-  const sv = Math.min(300/OW, 300/OH, 300/OD);
+  const sv = Math.min(220/OW, 220/OH, 220/OD);
   const C30=Math.cos(Math.PI/6), S30=Math.sin(Math.PI/6);
-  const SW=600, SH=540;
-  const cx=SW*0.38, cy=SH*0.72;
+  const SW=620, SH=580;
+  const cx=SW*0.36, cy=SH*0.60;
 
   const iso=(x,y,z)=>({
     x: cx + (x-z)*C30,
@@ -521,7 +521,7 @@ function Interactive3D({ data }) {
 
     const { overall_dimensions:od={}, components:comps=[] } = data;
     const OW=+od.width||800, OH=+od.height||750, OD=+od.depth||500;
-    const sc = Math.min(CW,CH) / Math.max(OW,OH,OD) * 0.50;
+    const sc = Math.min(CW,CH) / Math.max(OW,OH,OD) * 0.42;
     const { yaw, pitch } = stateRef.current;
 
     // 投影
@@ -531,7 +531,7 @@ function Interactive3D({ data }) {
       const rz1= -cx2*Math.sin(yaw) + cz2*Math.cos(yaw);
       const ry =  cy2*Math.cos(pitch) - rz1*Math.sin(pitch);
       const rz =  cy2*Math.sin(pitch) + rz1*Math.cos(pitch);
-      const fov=900, zz=rz+fov;
+      const fov=2400, zz=rz+fov;
       return { x: CW/2+rx*fov/zz, y: CH/2-ry*fov/zz, z: rz };
     };
 
@@ -1184,7 +1184,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v12</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v13</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
