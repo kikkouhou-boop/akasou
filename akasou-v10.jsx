@@ -995,6 +995,12 @@ ${observation}
 棚：W900, H1800, D350
 カウンター：W1800, H900, D600
 
+【shapeの選択ルール】※重要
+- 角材・板材・天板・幕板・棚板など四角形の部品 → shape: "rect"
+- 丸脚・円柱状の脚 → shape: "cylinder"
+- 曲面パネル → shape: "arc_panel"
+- 迷ったら必ず "rect" を使うこと。スケッチに角が描かれていれば必ず "rect"
+
 出力形式：
 {
   "furniture_name": "名称",
@@ -1184,7 +1190,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v13</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v14</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
