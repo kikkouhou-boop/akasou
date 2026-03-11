@@ -985,6 +985,12 @@ ${observation}
 - 脚は必ず1本ずつ独立したcomponentとして記述する（まとめてはいけない）
 - 脚4本の場合：前脚左(x=内側オフセット, z=内側オフセット)、前脚右(x=W-脚幅-オフセット, z=内側オフセット)、後脚左(x=内側オフセット, z=D-脚幅-オフセット)、後脚右(x=W-脚幅-オフセット, z=D-脚幅-オフセット)
 - 天板はy=全高さ-天板厚、幕板は脚の上端付近に配置
+- ★幕板の位置ルール（必須）：
+  - 長手前幕板：z = 脚の厚み（例：z:60）、奥行きは板厚のみ（depth:30程度）
+  - 長手後幕板：z = 全奥行き - 脚の厚み - 板厚（例：z:D-90）
+  - 短手幕板：x = 脚の厚み、width = 板厚のみ
+  - 幕板がz=0やx=0から始まると家具の外に飛び出すので絶対に禁止
+- ★角材の脚は width と depth を必ず同じ値にすること（例：width:60, depth:60）。異なる値にしてはいけない
 
 【棚・キャビネットの場合】
 - 側板2枚、天板、底板、各棚板を個別に記述する
@@ -1190,7 +1196,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v15</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v17</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
