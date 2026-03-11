@@ -467,7 +467,14 @@ function Isometric3D({ data }) {
   return (
     <svg width={SW} height={SH} viewBox={`0 0 ${SW} ${SH}`}
       style={{background:"#fafafa",maxWidth:"100%",display:"block"}} xmlns="http://www.w3.org/2000/svg">
-      {[...comps].sort((a,b)=>((b.position?.z||0)-(a.position?.z||0))).map((c,i)=>renderComp(c,i))}
+      {[...comps].sort((a,b)=>{
+        // 天板は最後に描画（一番上に表示）
+        const aIsTop = (a.part_name||"").includes("天板");
+        const bIsTop = (b.part_name||"").includes("天板");
+        if (aIsTop && !bIsTop) return 1;
+        if (!aIsTop && bIsTop) return -1;
+        return (b.position?.z||0)-(a.position?.z||0);
+      }).map((c,i)=>renderComp(c,i))}
       {/* 寸法線 */}
       <g>
         {[[iso(0,oh,0),pA],[iso(ow,oh,0),pB]].map(([f,t],i)=>(
@@ -1226,7 +1233,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v20</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v21</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
