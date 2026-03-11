@@ -21,43 +21,81 @@ const JisArrow = ({ x1,y1,x2,y2,col=C.dim }) => {
   </g>;
 };
 
-const Dim = ({ ax,ay,bx,by,val,gap=-32,orient="h" }) => {
+const Dim = ({ ax,ay,bx,by,val,gap=-32,orient="h",onEdit }) => {
+  const [editing, setEditing] = useState(false);
+  const [tmpVal, setTmpVal] = useState("");
   const label = `${Math.round(val)}`;
   const fSize = 9;
   const pad = 3;
-  const tLen = label.length * fSize * 0.62;  // 文字幅概算
+  const tLen = label.length * fSize * 0.62;
+
+  const startEdit = (e) => {
+    e.stopPropagation();
+    if (!onEdit) return;
+    setTmpVal(String(Math.round(val)));
+    setEditing(true);
+  };
+  const commitEdit = () => {
+    const n = parseInt(tmpVal,10);
+    if (!isNaN(n) && n > 0) onEdit(n);
+    setEditing(false);
+  };
 
   if (orient==="h") {
     const ey = ay + gap;
     const tx = (ax+bx)/2;
     const ty = ey + (gap<0 ? -5 : 13);
     return <g>
-      {/* 引出し線 */}
       <line x1={ax} y1={ay+(gap<0?-2:2)} x2={ax} y2={ey+(gap<0?6:-6)} stroke={C.dim} strokeWidth={0.5}/>
       <line x1={bx} y1={by+(gap<0?-2:2)} x2={bx} y2={ey+(gap<0?6:-6)} stroke={C.dim} strokeWidth={0.5}/>
-      {/* 寸法線・矢印 */}
       <JisArrow x1={ax} y1={ey} x2={bx} y2={ey} col={C.dim}/>
       <JisArrow x1={bx} y1={ey} x2={ax} y2={ey} col={C.dim}/>
-      {/* テキスト背景（白塗り） */}
-      <rect x={tx-tLen/2-pad} y={ty-fSize-pad+2} width={tLen+pad*2} height={fSize+pad*2-2} fill="white" opacity={0.9}/>
-      <text x={tx} y={ty} textAnchor="middle" fill={C.dim} fontSize={fSize} fontFamily={MONO} fontWeight="600">{label}</text>
+      <rect x={tx-tLen/2-pad} y={ty-fSize-pad+2} width={tLen+pad*2} height={fSize+pad*2-2}
+        fill={editing?"#fff9c4":onEdit?"#e8f4ff":"white"} opacity={0.95}
+        rx={onEdit?2:0} stroke={onEdit?"#2563eb":"none"} strokeWidth={onEdit?0.5:0}
+        style={onEdit?{cursor:"pointer"}:{}} onClick={startEdit}/>
+      {editing
+        ? <foreignObject x={tx-22} y={ty-fSize-pad+1} width={44} height={fSize+pad*2}>
+            <input
+              style={{width:"100%",fontSize:9,border:"1px solid #2563eb",borderRadius:2,textAlign:"center",padding:"1px",outline:"none",background:"#fffde7"}}
+              value={tmpVal} autoFocus
+              onChange={e=>setTmpVal(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={e=>{if(e.key==="Enter")commitEdit();if(e.key==="Escape")setEditing(false);}}
+            />
+          </foreignObject>
+        : <text x={tx} y={ty} textAnchor="middle" fill={C.dim} fontSize={fSize} fontFamily={MONO} fontWeight="600"
+            style={onEdit?{cursor:"pointer"}:{}} onClick={startEdit}>{label}</text>
+      }
     </g>;
   } else {
     const ex = ax + gap;
     const tx = ex + (gap<0 ? -6 : 12);
     const ty = (ay+by)/2;
     return <g>
-      {/* 引出し線 */}
       <line x1={ax+(gap<0?-2:2)} y1={ay} x2={ex+(gap<0?6:-6)} y2={ay} stroke={C.dim} strokeWidth={0.5}/>
       <line x1={bx+(gap<0?-2:2)} y1={by} x2={ex+(gap<0?6:-6)} y2={by} stroke={C.dim} strokeWidth={0.5}/>
-      {/* 寸法線・矢印 */}
       <JisArrow x1={ex} y1={ay} x2={ex} y2={by} col={C.dim}/>
       <JisArrow x1={ex} y1={by} x2={ex} y2={ay} col={C.dim}/>
-      {/* テキスト背景（白塗り、縦書き用に横長） */}
-      <rect x={tx-fSize/2-pad+1} y={ty-tLen/2-pad} width={fSize+pad*2-2} height={tLen+pad*2} fill="white" opacity={0.9}
-        transform={`rotate(-90,${tx},${ty})`}/>
-      <text x={tx} y={ty+fSize*0.35} textAnchor="middle" fill={C.dim} fontSize={fSize} fontFamily={MONO} fontWeight="600"
-        transform={`rotate(-90,${tx},${ty})`}>{label}</text>
+      <rect x={tx-fSize/2-pad+1} y={ty-tLen/2-pad} width={fSize+pad*2-2} height={tLen+pad*2}
+        fill={editing?"#fff9c4":onEdit?"#e8f4ff":"white"} opacity={0.95}
+        rx={onEdit?2:0} stroke={onEdit?"#2563eb":"none"} strokeWidth={onEdit?0.5:0}
+        transform={`rotate(-90,${tx},${ty})`}
+        style={onEdit?{cursor:"pointer"}:{}} onClick={startEdit}/>
+      {editing
+        ? <foreignObject x={tx-22} y={ty-8} width={44} height={16}>
+            <input
+              style={{width:"100%",fontSize:9,border:"1px solid #2563eb",borderRadius:2,textAlign:"center",padding:"1px",outline:"none",background:"#fffde7"}}
+              value={tmpVal} autoFocus
+              onChange={e=>setTmpVal(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={e=>{if(e.key==="Enter")commitEdit();if(e.key==="Escape")setEditing(false);}}
+            />
+          </foreignObject>
+        : <text x={tx} y={ty+fSize*0.35} textAnchor="middle" fill={C.dim} fontSize={fSize} fontFamily={MONO} fontWeight="600"
+            transform={`rotate(-90,${tx},${ty})`}
+            style={onEdit?{cursor:"pointer"}:{}} onClick={startEdit}>{label}</text>
+      }
     </g>;
   }
 };
@@ -219,7 +257,7 @@ function CompTop({ comp, ox,oy, sc, totalD }) {
 // ══════════════════════════════════════════════════
 // 2D JIS図面シート（コンポーネント駆動）
 // ══════════════════════════════════════════════════
-function Drawing2D({ data, svgRef }) {
+function Drawing2D({ data, svgRef, onDimChange }) {
   if (!data) return null;
   const { overall_dimensions:od={}, components:comps=[], furniture_name, material } = data;
   const OW=+od.width||800, OH=+od.height||750, OD=+od.depth||500;
@@ -291,20 +329,20 @@ function Drawing2D({ data, svgRef }) {
       <text x={fOX-12} y={fOY+fH*0.4-4} fontSize={8} fill="#cc2200" fontFamily={MONO} fontWeight="700">A</text>
       <text x={fOX+fW+8} y={fOY+fH*0.4-4} fontSize={8} fill="#cc2200" fontFamily={MONO} fontWeight="700">A</text>
       {/* 寸法 */}
-      <Dim ax={fOX} ay={fOY} bx={fOX+fW} by={fOY} val={OW} gap={-38}/>
-      <Dim ax={fOX+fW} ay={fOY} bx={fOX+fW} by={fOY+fH} val={OH} gap={44} orient="v"/>
+      <Dim ax={fOX} ay={fOY} bx={fOX+fW} by={fOY} val={OW} gap={-38} onEdit={v=>onDimChange&&onDimChange("width",v)}/>
+      <Dim ax={fOX+fW} ay={fOY} bx={fOX+fW} by={fOY+fH} val={OH} gap={44} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
       {/* ── 平面図 ── */}
       {sortedComps.map((c,i)=><CompTop key={i} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD}/>)}
       <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
-      <Dim ax={tOX} ay={tOY} bx={tOX+tW} by={tOY} val={OW} gap={-32}/>
-      <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v"/>
+      <Dim ax={tOX} ay={tOY} bx={tOX+tW} by={tOY} val={OW} gap={-32} onEdit={v=>onDimChange&&onDimChange("width",v)}/>
+      <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
       {/* ── 右側面図 ── */}
       {sortedComps.map((c,i)=><CompSide key={i} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH}/>)}
       <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
-      <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32}/>
-      <Dim ax={sOX+sW} ay={sOY} bx={sOX+sW} by={sOY+sH} val={OH} gap={36} orient="v"/>
+      <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
+      <Dim ax={sOX+sW} ay={sOY} bx={sOX+sW} by={sOY+sH} val={OH} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
       {/* 部品バルーン */}
       {comps.slice(0,6).map((c,i)=>{
@@ -916,6 +954,10 @@ function EasyEditor({ data, onApply }) {
 // ステップ1：画像観察プロンプト
 const PROMPT_OBSERVE = `この画像に描かれている家具・造作物を観察して、以下の項目を具体的に答えてください。
 
+【最優先：寸法数値の読み取り】
+画像に数字や寸法（例：W1400、H720、60角、t30など）が書かれていれば、必ずすべて読み取って報告してください。
+手書きの数字でも読める限り読んでください。これらは後の図面生成で最優先で使用します。
+
 【必須項目】
 1. 家具の種類（テーブル／棚／椅子／カウンター／建具 など）
 2. 脚の本数と断面形状（角材／丸脚）、およびおおよその太さ
@@ -1095,6 +1137,37 @@ export default function App() {
     a.click();
   };
 
+  const downloadPDF = () => {
+    if (!svgRef.current) return;
+    const xml = new XMLSerializer().serializeToString(svgRef.current);
+    const svgBlob = new Blob([xml], {type:"image/svg+xml;charset=utf-8"});
+    const url = URL.createObjectURL(svgBlob);
+    const win = window.open("","_blank");
+    win.document.write(`<!DOCTYPE html><html><head>
+      <title>${data?.furniture_name||"図面"}</title>
+      <style>
+        @page { size: A3 landscape; margin: 10mm; }
+        body { margin:0; padding:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#fff; }
+        img { max-width:100%; max-height:100vh; }
+        @media print { body { min-height:unset; } }
+      </style>
+    </head><body>
+      <img src="${url}" onload="window.print();"/>
+    </body></html>`);
+    win.document.close();
+  };
+
+  const handleDimChange = (key, val) => {
+    if (!data) return;
+    const updated = {
+      ...data,
+      overall_dimensions: { ...data.overall_dimensions, [key]: val }
+    };
+    setData(updated);
+    const s = JSON.stringify(updated, null, 2);
+    setRawJson(s); setJsonEdit(s);
+  };
+
   const TABS = [
     { key:"2d",    label:"2D図面（JIS）" },
     { key:"3d",    label:"3Dモデル" },
@@ -1111,14 +1184,19 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v10</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v12</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
         {data && (
-          <button onClick={downloadSVG} style={{marginLeft:"auto",padding:"6px 16px",background:C.accent2,color:"#fff",border:"none",borderRadius:5,fontSize:11,fontWeight:600,cursor:"pointer"}}>
-            SVGダウンロード
-          </button>
+          <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+            <button onClick={downloadPDF} style={{padding:"6px 16px",background:"#d73a49",color:"#fff",border:"none",borderRadius:5,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+              PDFダウンロード
+            </button>
+            <button onClick={downloadSVG} style={{padding:"6px 16px",background:C.accent2,color:"#fff",border:"none",borderRadius:5,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+              SVGダウンロード
+            </button>
+          </div>
         )}
       </div>
 
@@ -1214,7 +1292,7 @@ export default function App() {
 
               {tab==="2d" && (
                 <div style={{overflowX:"auto"}}>
-                  <Drawing2D data={data} svgRef={svgRef}/>
+                  <Drawing2D data={data} svgRef={svgRef} onDimChange={handleDimChange}/>
                 </div>
               )}
 
