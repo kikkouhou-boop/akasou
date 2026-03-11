@@ -456,16 +456,16 @@ function Isometric3D({ data }) {
       return <g key={idx}>{segs}</g>;
     }
 
-    // 通常の直方体
-    // Z方向が主軸のパネル（短手幕板など）は右面をスキップ→「ついたて」防止
-    const isZPanel = D > W * 2;
+    // 通常の直方体 - 視点から見える面のみ描画
+    // 幅(W)が極端に薄く奥行き(D)が深い部品（短手幕板など）の右面はついたてになるのでスキップ
+    const showRightFace = !(W < 50 && D > W * 3);
     return <g key={idx}>
-      {/* 上面 */}
+      {/* 上面（Y+法線）*/}
       {face([[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]],cols[0])}
-      {/* 正面 */}
+      {/* 正面（Z-法線）*/}
       {face([[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],cols[1])}
-      {/* 右面：Z方向主体パネルはスキップ */}
-      {!isZPanel && face([[x+w,y,z],[x+w,y,z+d],[x+w,y+h,z+d],[x+w,y+h,z]],cols[2])}
+      {/* 右面（X+法線）: 短手パネルはスキップ */}
+      {showRightFace && face([[x+w,y,z],[x+w,y,z+d],[x+w,y+h,z+d],[x+w,y+h,z]],cols[2])}
     </g>;
   };
 
@@ -1244,7 +1244,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v24</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v25</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
