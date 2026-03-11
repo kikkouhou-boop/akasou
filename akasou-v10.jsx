@@ -423,8 +423,8 @@ function Isometric3D({ data }) {
     const isTopComp = name.includes("天板");
     const colorIdx = isLegComp ? 3 : isTopComp ? 0 : (name.includes("幕板") ? 1 : idx % woodColors.length);
     const cols = woodColors[colorIdx];
-    // 脚は最小表示サイズを確保（視認性のため）
-    const minLegPx = 35;
+    // 脚は最小表示サイズ16pxを確保
+    const minLegPx = 16;
     const w = isLegComp ? Math.max(W*sv, minLegPx) : W*sv;
     const d = isLegComp ? Math.max(D*sv, minLegPx) : D*sv;
     const h = H*sv;
@@ -457,13 +457,15 @@ function Isometric3D({ data }) {
     }
 
     // 通常の直方体
+    // Z方向が主軸のパネル（短手幕板など）は右面をスキップ→「ついたて」防止
+    const isZPanel = D > W * 2;
     return <g key={idx}>
       {/* 上面 */}
       {face([[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]],cols[0])}
       {/* 正面 */}
       {face([[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],cols[1])}
-      {/* 右面 */}
-      {face([[x+w,y,z],[x+w,y,z+d],[x+w,y+h,z+d],[x+w,y+h,z]],cols[2])}
+      {/* 右面：Z方向主体パネルはスキップ */}
+      {!isZPanel && face([[x+w,y,z],[x+w,y,z+d],[x+w,y+h,z+d],[x+w,y+h,z]],cols[2])}
     </g>;
   };
 
@@ -1242,7 +1244,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v23</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v24</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
