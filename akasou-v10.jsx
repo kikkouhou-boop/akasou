@@ -417,13 +417,17 @@ function Isometric3D({ data }) {
     const { shape="rect", width:W=0, height:H=0, depth:D=0,
       position:pos={}, arc_radius } = comp;
     const x=(pos.x||0)*sv, y=(pos.y||0)*sv, z=(pos.z||0)*sv;
+    // 部品タイプで色を決定（脚は全部同じ色、天板は別色）
+    const name = comp.part_name || "";
+    const isLegComp = name.includes("脚");
+    const isTopComp = name.includes("天板");
+    const colorIdx = isLegComp ? 3 : isTopComp ? 0 : (name.includes("幕板") ? 1 : idx % woodColors.length);
+    const cols = woodColors[colorIdx];
     // 脚は最小表示サイズを確保（視認性のため）
-    const isLegComp = (comp.part_name||"").includes("脚");
-    const minLegPx = 14; // 最低14px
+    const minLegPx = 35;
     const w = isLegComp ? Math.max(W*sv, minLegPx) : W*sv;
     const d = isLegComp ? Math.max(D*sv, minLegPx) : D*sv;
     const h = H*sv;
-    const cols = woodColors[idx % woodColors.length];
 
     if (shape==="cylinder") {
       const r=w/2;
@@ -1238,7 +1242,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v22</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v23</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
