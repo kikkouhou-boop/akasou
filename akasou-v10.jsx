@@ -423,8 +423,8 @@ function Isometric3D({ data }) {
     const isTopComp = name.includes("天板");
     const colorIdx = isLegComp ? 3 : isTopComp ? 0 : (name.includes("幕板") ? 1 : idx % woodColors.length);
     const cols = woodColors[colorIdx];
-    // 脚は最小表示サイズ16pxを確保
-    const minLegPx = 16;
+    // 脚は最小表示サイズ24pxを確保（四角柱に見えるよう幅・奥行きを十分確保）
+    const minLegPx = 24;
     const w = isLegComp ? Math.max(W*sv, minLegPx) : W*sv;
     const d = isLegComp ? Math.max(D*sv, minLegPx) : D*sv;
     const h = H*sv;
@@ -459,9 +459,12 @@ function Isometric3D({ data }) {
     // 通常の直方体 - 視点から見える面のみ描画
     // 幅(W)が極端に薄く奥行き(D)が深い部品（短手幕板など）の右面はついたてになるのでスキップ
     const showRightFace = !(W < 50 && D > W * 3);
+    // 短手幕板（幕板かつW<DかつW<50）は上面がZ方向に大きく伸びて「ついたて」に見えるため非表示
+    const isSlenderApron = name.includes("幕板") && W < D && W < 50;
+    const showTopFace = !isSlenderApron;
     return <g key={idx}>
-      {/* 上面（Y+法線）*/}
-      {face([[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]],cols[0])}
+      {/* 上面（Y+法線）: 短手幕板はスキップ */}
+      {showTopFace && face([[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]],cols[0])}
       {/* 正面（Z-法線）*/}
       {face([[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],cols[1])}
       {/* 右面（X+法線）: 短手パネルはスキップ */}
