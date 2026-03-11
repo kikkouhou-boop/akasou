@@ -981,7 +981,18 @@ ${observation}
 - x軸 = 右方向（幅）、y軸 = 上方向（高さ）、z軸 = 奥方向（奥行き）
 - position は各部品の「左下手前の角」の座標
 
-【テーブル・脚物家具の場合の必須ルール】
+【テーブルのお手本JSON】※脚の寸法は必ずこの形式に従うこと
+W=1400, H=720, D=840, 脚60角の場合：
+  前脚左:  {width:60, height:680, depth:60, position:{x:60,  y:0, z:60}}
+  前脚右:  {width:60, height:680, depth:60, position:{x:1280, y:0, z:60}}
+  後脚左:  {width:60, height:680, depth:60, position:{x:60,  y:0, z:720}}
+  後脚右:  {width:60, height:680, depth:60, position:{x:1280, y:0, z:720}}
+  天板:    {width:1400, height:40, depth:840, position:{x:0, y:680, z:0}}
+  幕板前:  {width:1280, height:80, depth:30, position:{x:60, y:600, z:60}}
+  幕板後:  {width:1280, height:80, depth:30, position:{x:60, y:600, z:750}}
+  幕板左:  {width:30, height:80, depth:600, position:{x:60, y:600, z:90}}
+  幕板右:  {width:30, height:80, depth:600, position:{x:1310, y:600, z:90}}
+★脚のwidthとdepthは必ず同じ値（正方形断面）にすること
 - 脚は必ず1本ずつ独立したcomponentとして記述する（まとめてはいけない）
 - 脚4本の場合：前脚左(x=内側オフセット, z=内側オフセット)、前脚右(x=W-脚幅-オフセット, z=内側オフセット)、後脚左(x=内側オフセット, z=D-脚幅-オフセット)、後脚右(x=W-脚幅-オフセット, z=D-脚幅-オフセット)
 - 天板はy=全高さ-天板厚、幕板は脚の上端付近に配置
@@ -1067,9 +1078,29 @@ export default function App() {
   const svgRef  = useRef(null);
   const fileRef = useRef(null);
 
+  // 脚の寸法を自動補正（widthとdepthを正方形に統一）
+  const fixLegDimensions = (parsed) => {
+    if (!parsed?.components) return parsed;
+    const fixed = {
+      ...parsed,
+      components: parsed.components.map(comp => {
+        const name = comp.part_name || "";
+        const isLeg = name.includes("脚") || name.includes("leg") || name.toLowerCase().includes("leg");
+        if (isLeg && comp.shape !== "cylinder") {
+          const size = Math.max(comp.width || 60, comp.depth || 60);
+          // 幅か奥行きの大きい方を基準にするが、明らかに高さ方向でない場合のみ
+          const legSize = Math.min(comp.width || 60, comp.depth || 60, 120);
+          return { ...comp, width: legSize, depth: legSize };
+        }
+        return comp;
+      })
+    };
+    return fixed;
+  };
+
   const applyJson = (str) => {
     try {
-      const parsed = JSON.parse(str);
+      const parsed = fixLegDimensions(JSON.parse(str));
       setData(parsed); setJsonErr(""); setTab("2d");
     } catch(e) { setJsonErr(e.message); }
   };
@@ -1130,7 +1161,7 @@ export default function App() {
 
       const m = jsonText.match(/\{[\s\S]*\}/);
       if (!m) throw new Error("JSON取得失敗。返答: " + jsonText.slice(0,300));
-      const parsed = JSON.parse(m[0]);
+      const parsed = fixLegDimensions(JSON.parse(m[0]));
       const pretty = JSON.stringify(parsed, null, 2);
       setRawJson(pretty); setJsonEdit(pretty);
       setData(parsed);
@@ -1196,7 +1227,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v17</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v19</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
