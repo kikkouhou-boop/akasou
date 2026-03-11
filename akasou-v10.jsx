@@ -70,6 +70,34 @@ const Grain = ({ x,y,w,h,dir="h" }) => {
   )}</g>;
 };
 
+// 部品寸法注記（正面図内・各部品にW×H×D表示）
+const CompDimLabel = ({ comp, ox, oy, sc, totalH }) => {
+  const { width:W=0, height:H=0, depth:D=0, position:pos={}, is_hidden } = comp;
+  if (is_hidden || W<=0 || H<=0) return null;
+  const px = (pos.x||0)*sc + ox;
+  const py = oy + (totalH - (pos.y||0) - H)*sc;
+  const w = W*sc, h = H*sc;
+  const cx = px + w/2;
+  const cy = py + h/2;
+  const label = `${Math.round(W)}×${Math.round(H)}×${Math.round(D)}`;
+  const fSize = 7.5;
+  const tLen = label.length * fSize * 0.62;
+  const pad = 2.5;
+  const inside = w > tLen + pad*2 + 4 && h > fSize + pad*2 + 4;
+  if (inside) {
+    return <g>
+      <rect x={cx-tLen/2-pad} y={cy-fSize/2-pad} width={tLen+pad*2} height={fSize+pad*2} fill="white" opacity={0.85} rx={1}/>
+      <text x={cx} y={cy+fSize*0.35} textAnchor="middle" fill="#1a56a8" fontSize={fSize} fontFamily={MONO} fontWeight="600">{label}</text>
+    </g>;
+  }
+  const lx = px + w + 8, ly = py + h/2;
+  return <g>
+    <line x1={px+w} y1={ly} x2={lx+2} y2={ly} stroke="#1a56a8" strokeWidth={0.5} strokeDasharray="2,1.5"/>
+    <rect x={lx+2} y={ly-fSize/2-pad} width={tLen+pad*2} height={fSize+pad*2} fill="white" opacity={0.9} rx={1}/>
+    <text x={lx+4+pad} y={ly+fSize*0.35} fill="#1a56a8" fontSize={fSize} fontFamily={MONO} fontWeight="600">{label}</text>
+  </g>;
+};
+
 // SVGアーク描画ヘルパー
 const arcPath = (cx,cy,r,startDeg,endDeg) => {
   const s=startDeg*Math.PI/180, e=endDeg*Math.PI/180;
@@ -254,6 +282,7 @@ function Drawing2D({ data, svgRef }) {
 
       {/* ── 正面図 ── */}
       {sortedComps.map((c,i)=><CompFront key={i} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH}/>)}
+      {sortedComps.map((c,i)=><CompDimLabel key={`dl${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH}/>)}
       <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
       {/* 中心線 */}
       <line x1={fOX+fW/2} y1={fOY+4} x2={fOX+fW/2} y2={fOY+fH-4} stroke="#888" strokeWidth={0.5} strokeDasharray="8,3,1,3"/>
