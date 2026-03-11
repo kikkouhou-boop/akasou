@@ -1087,9 +1087,8 @@ export default function App() {
         const name = comp.part_name || "";
         const isLeg = name.includes("脚") || name.includes("leg") || name.toLowerCase().includes("leg");
         if (isLeg && comp.shape !== "cylinder") {
-          const size = Math.max(comp.width || 60, comp.depth || 60);
-          // 幅か奥行きの大きい方を基準にするが、明らかに高さ方向でない場合のみ
-          const legSize = Math.min(comp.width || 60, comp.depth || 60, 120);
+          // widthとdepthの大きい方を採用（ただし120mm上限）
+          const legSize = Math.min(Math.max(comp.width || 60, comp.depth || 60), 120);
           return { ...comp, width: legSize, depth: legSize };
         }
         return comp;
@@ -1227,7 +1226,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v19</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v20</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
