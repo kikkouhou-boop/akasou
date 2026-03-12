@@ -399,12 +399,13 @@ function Isometric3D({ data }) {
     y: cy - y + (x+z)*S30,
   });
 
+  // [上面(明), 正面(中), 側面(暗)] — 側面は正面より暗くして等角投影の立体感を出す
   const woodColors = [
-    ["#e8cfaa","#c8a070","#d4b480"],
-    ["#d8e8c0","#a8c080","#c0d490"],
-    ["#c8d8e8","#8098b8","#90a8c8"],
-    ["#e8d8c0","#b8a070","#c8b080"],
-    ["#d0c8e0","#9888b0","#b0a0c8"],
+    ["#e8cfaa","#c8a070","#7a5828"],  // 天板
+    ["#d8e8c0","#a8c080","#507040"],  // 幕板系
+    ["#c8d8e8","#8098b8","#406080"],  // 青系
+    ["#e8d8c0","#c8a860","#7a5428"],  // 脚（正面を少し明るく、側面を暗く）
+    ["#d0c8e0","#9888b0","#584070"],  // 紫系
   ];
 
   const face=(pts,fill)=>{
@@ -419,12 +420,12 @@ function Isometric3D({ data }) {
     const x=(pos.x||0)*sv, y=(pos.y||0)*sv, z=(pos.z||0)*sv;
     // 部品タイプで色を決定（脚は全部同じ色、天板は別色）
     const name = comp.part_name || "";
-    const isLegComp = name.includes("脚");
+    const isLegComp = name.includes("脚") || name.toLowerCase().includes("leg");
     const isTopComp = name.includes("天板");
     const colorIdx = isLegComp ? 3 : isTopComp ? 0 : (name.includes("幕板") ? 1 : idx % woodColors.length);
     const cols = woodColors[colorIdx];
-    // 脚は最小表示サイズ24pxを確保（四角柱に見えるよう幅・奥行きを十分確保）
-    const minLegPx = 24;
+    // 脚は最小表示サイズ32pxを確保（四角柱に見えるよう幅・奥行きを十分確保）
+    const minLegPx = 32;
     const w = isLegComp ? Math.max(W*sv, minLegPx) : W*sv;
     const d = isLegComp ? Math.max(D*sv, minLegPx) : D*sv;
     const h = H*sv;
@@ -456,19 +457,25 @@ function Isometric3D({ data }) {
       return <g key={idx}>{segs}</g>;
     }
 
-    // 通常の直方体 - 視点から見える面のみ描画
-    // 幅(W)が極端に薄く奥行き(D)が深い部品（短手幕板など）の右面はついたてになるのでスキップ
-    const showRightFace = !(W < 50 && D > W * 3);
-    // 短手幕板（幕板かつW<DかつW<50）は上面がZ方向に大きく伸びて「ついたて」に見えるため非表示
-    const isSlenderApron = name.includes("幕板") && W < D && W < 50;
-    const showTopFace = !isSlenderApron;
+    // 通常の直方体 - 面の表示制御
+    // この等角投影（iso関数）でのスクリーン配置:
+    //   Z-面(正面) → スクリーン右側に出る
+    //   X-面(左面) → スクリーン左側に出る ← 脚のみ追加して四角柱表現
+    //   X+面(右面) → Z-面と同X域に重なるが脚の下縁に視認できる
+    //   Y+面(上面) → 上部
+    // 幅が薄く奥行きが深いパネル(D>W*3)は右面がついたて状になるので非表示
+    const isSlenderPanel = D > W * 3;
+    const showRightFace = !isSlenderPanel;  // 薄いパネルのみ右面を非表示
+    const showTopFace   = !isSlenderPanel;
     return <g key={idx}>
-      {/* 上面（Y+法線）: 短手幕板はスキップ */}
+      {/* 左面（X-法線）: 脚のみ。スクリーン左側に出て四角柱の奥行きを表現 */}
+      {isLegComp && face([[x,y,z],[x,y,z+d],[x,y+h,z+d],[x,y+h,z]], cols[2])}
+      {/* 上面（Y+法線）: 薄いパネルはスキップ */}
       {showTopFace && face([[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]],cols[0])}
-      {/* 正面（Z-法線）*/}
-      {face([[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],cols[1])}
-      {/* 右面（X+法線）: 短手パネルはスキップ */}
+      {/* 右面（X+法線）: 薄いパネルはスキップ */}
       {showRightFace && face([[x+w,y,z],[x+w,y,z+d],[x+w,y+h,z+d],[x+w,y+h,z]],cols[2])}
+      {/* 正面（Z-法線）: 最後に描画して前面を確定 */}
+      {face([[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],cols[1])}
     </g>;
   };
 
