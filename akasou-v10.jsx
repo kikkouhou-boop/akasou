@@ -465,7 +465,7 @@ function Isometric3D({ data }) {
     //   Y+面(上面) → 上部
     // 幅が薄く奥行きが深いパネル(D>W*3)は右面がついたて状になるので非表示
     const isSlenderPanel = D > W * 3;
-    const showRightFace = !isSlenderPanel;  // 薄いパネルのみ右面を非表示
+    const showRightFace = !isSlenderPanel && !isLegComp;  // 薄いパネルと脚は右面を非表示
     const showTopFace   = !isSlenderPanel;
     return <g key={idx}>
       {/* 左面（X-法線）: 脚のみ。スクリーン左側に出て四角柱の奥行きを表現 */}
