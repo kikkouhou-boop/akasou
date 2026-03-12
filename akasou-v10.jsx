@@ -464,17 +464,16 @@ function Isometric3D({ data }) {
     //   X+面(右面) → Z-面と同X域に重なるが脚の下縁に視認できる
     //   Y+面(上面) → 上部
     // 幅が薄く奥行きが深いパネル(D>W*3)は右面がついたて状になるので非表示
+    // この等角投影のカメラ方向は(1,1,1)/√3。可視面はX-（左）、Y+（上）、Z-（正面）。
+    // X+面（右面）はカメラ逆側で不可視なため描画しない。
+    // 奥行きが大きいパネル（D>W*3）は左面がついたて状になるので非表示。
     const isSlenderPanel = D > W * 3;
-    const showRightFace = !isSlenderPanel && !isLegComp;  // 薄いパネルと脚は右面を非表示
-    const showTopFace   = !isSlenderPanel;
     return <g key={idx}>
-      {/* 左面（X-法線）: 脚のみ。スクリーン左側に出て四角柱の奥行きを表現 */}
-      {isLegComp && face([[x,y,z],[x,y,z+d],[x,y+h,z+d],[x,y+h,z]], cols[2])}
-      {/* 上面（Y+法線）: 薄いパネルはスキップ */}
-      {showTopFace && face([[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]],cols[0])}
-      {/* 右面（X+法線）: 薄いパネルはスキップ */}
-      {showRightFace && face([[x+w,y,z],[x+w,y,z+d],[x+w,y+h,z+d],[x+w,y+h,z]],cols[2])}
-      {/* 正面（Z-法線）: 最後に描画して前面を確定 */}
+      {/* 左面（X-法線）: 等角投影で可視。薄いパネルは遠くに伸びるので非表示 */}
+      {!isSlenderPanel && face([[x,y,z],[x,y,z+d],[x,y+h,z+d],[x,y+h,z]], cols[2])}
+      {/* 上面（Y+法線）: 等角投影で可視。薄いパネルはスキップ */}
+      {!isSlenderPanel && face([[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]],cols[0])}
+      {/* 正面（Z-法線）: 常に描画。最後に描いて前面を確定 */}
       {face([[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],cols[1])}
     </g>;
   };
