@@ -408,75 +408,62 @@ function Isometric3D({ data }) {
     ["#d0c8e0","#9888b0","#584070"],  // 紫系
   ];
 
-  const face=(pts,fill)=>{
-    const d2=pts.map(([x,y,z])=>{const p=iso(x,y,z);return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;}).join(" ");
-    return <polygon points={d2} fill={fill} stroke="#4a3520" strokeWidth={0.7} opacity={0.95}/>;
+  // フェイスレベルのPainter法：すべての面を収集→深度(x+y+z)でソート→描画
+  // この等角投影のカメラ方向は(1,1,1)/√3。深度=x+y+z（大=遠=先に描画）
+  const allFaces = [];
+  const addFace = (pts, fill) => {
+    const depth = pts.reduce((s,[x,y,z])=>s+x+y+z, 0) / pts.length;
+    allFaces.push({ pts, fill, depth });
   };
 
-  // 各部品を箱として描画（arc_panelは近似）
-  const renderComp = (comp, idx) => {
+  comps.forEach((comp, idx) => {
     const { shape="rect", width:W=0, height:H=0, depth:D=0,
       position:pos={}, arc_radius } = comp;
-    const x=(pos.x||0)*sv, y=(pos.y||0)*sv, z=(pos.z||0)*sv;
-    // 部品タイプで色を決定（脚は全部同じ色、天板は別色）
     const name = comp.part_name || "";
     const isLegComp = name.includes("脚") || name.toLowerCase().includes("leg");
     const isTopComp = name.includes("天板");
     const colorIdx = isLegComp ? 3 : isTopComp ? 0 : (name.includes("幕板") ? 1 : idx % woodColors.length);
     const cols = woodColors[colorIdx];
-    // 脚は最小表示サイズ32pxを確保（四角柱に見えるよう幅・奥行きを十分確保）
-    const minLegPx = 16;
+    const minLegPx = 20;
+    const xp=(pos.x||0)*sv, yp=(pos.y||0)*sv, zp=(pos.z||0)*sv;
     const w = isLegComp ? Math.max(W*sv, minLegPx) : W*sv;
     const d = isLegComp ? Math.max(D*sv, minLegPx) : D*sv;
     const h = H*sv;
 
     if (shape==="cylinder") {
-      const r=w/2;
-      // 近似：八角柱
-      const n=8;
-      const segs=[];
+      const r=w/2, n=8;
       for (let i=0;i<n;i++) {
         const a1=(i/n)*Math.PI*2, a2=((i+1)/n)*Math.PI*2;
-        const x1c=x+r+r*Math.cos(a1), z1c=z+r+r*Math.sin(a1);
-        const x2c=x+r+r*Math.cos(a2), z2c=z+r+r*Math.sin(a2);
-        segs.push(face([[x1c,y,z1c],[x2c,y,z2c],[x2c,y+h,z2c],[x1c,y+h,z1c]],cols[0]));
+        const x1c=xp+r+r*Math.cos(a1), z1c=zp+r+r*Math.sin(a1);
+        const x2c=xp+r+r*Math.cos(a2), z2c=zp+r+r*Math.sin(a2);
+        addFace([[x1c,yp,z1c],[x2c,yp,z2c],[x2c,yp+h,z2c],[x1c,yp+h,z1c]], cols[0]);
       }
-      return <g key={idx}>{segs}</g>;
+      return;
     }
-
     if (shape==="arc_panel" && arc_radius) {
       const R=arc_radius*sv;
       const n=12, sa=(comp.arc_start_deg||180)*Math.PI/180, ea=(comp.arc_end_deg||360)*Math.PI/180;
-      const segs=[];
       for (let i=0;i<n;i++) {
         const a1=sa+(ea-sa)*(i/n), a2=sa+(ea-sa)*((i+1)/n);
-        const x1c=x+w/2+R*Math.cos(a1), z1c=z+d/2+R*Math.sin(a1);
-        const x2c=x+w/2+R*Math.cos(a2), z2c=z+d/2+R*Math.sin(a2);
-        segs.push(face([[x1c,y,z1c],[x2c,y,z2c],[x2c,y+h,z2c],[x1c,y+h,z1c]],cols[0]));
+        const x1c=xp+w/2+R*Math.cos(a1), z1c=zp+d/2+R*Math.sin(a1);
+        const x2c=xp+w/2+R*Math.cos(a2), z2c=zp+d/2+R*Math.sin(a2);
+        addFace([[x1c,yp,z1c],[x2c,yp,z2c],[x2c,yp+h,z2c],[x1c,yp+h,z1c]], cols[0]);
       }
-      return <g key={idx}>{segs}</g>;
+      return;
     }
 
-    // 通常の直方体 - 面の表示制御
-    // この等角投影（iso関数）でのスクリーン配置:
-    //   Z-面(正面) → スクリーン右側に出る
-    //   X-面(左面) → スクリーン左側に出る ← 脚のみ追加して四角柱表現
-    //   X+面(右面) → Z-面と同X域に重なるが脚の下縁に視認できる
-    //   Y+面(上面) → 上部
-    // 幅が薄く奥行きが深いパネル(D>W*3)は右面がついたて状になるので非表示
-    // この等角投影のカメラ方向は(1,1,1)/√3。可視面はX-（左）、Y+（上）、Z-（正面）。
-    // X+面（右面）はカメラ逆側で不可視なため描画しない。
-    // 奥行きが大きいパネル（D>W*3）は左面がついたて状になるので非表示。
+    // 通常の直方体：可視面はX-（左）・Y+（上）・Z-（正面）の3面
+    // 奥行きが大きいパネル(D>W*3)はX-・Y+面がついたて状になるので非表示
     const isSlenderPanel = D > W * 3;
-    return <g key={idx}>
-      {/* 左面（X-法線）: 等角投影で可視。薄いパネルは遠くに伸びるので非表示 */}
-      {!isSlenderPanel && face([[x,y,z],[x,y,z+d],[x,y+h,z+d],[x,y+h,z]], cols[2])}
-      {/* 上面（Y+法線）: 等角投影で可視。薄いパネルはスキップ */}
-      {!isSlenderPanel && face([[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]],cols[0])}
-      {/* 正面（Z-法線）: 常に描画。最後に描いて前面を確定 */}
-      {face([[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],cols[1])}
-    </g>;
-  };
+    if (!isSlenderPanel) {
+      addFace([[xp,yp,zp],[xp,yp,zp+d],[xp,yp+h,zp+d],[xp,yp+h,zp]], cols[2]); // X-面（左）
+      addFace([[xp,yp+h,zp],[xp+w,yp+h,zp],[xp+w,yp+h,zp+d],[xp,yp+h,zp+d]], cols[0]); // Y+面（上）
+    }
+    addFace([[xp,yp,zp],[xp+w,yp,zp],[xp+w,yp+h,zp],[xp,yp+h,zp]], cols[1]); // Z-面（正面）
+  });
+
+  // 深度降順ソート（遠い面から順に描画）
+  allFaces.sort((a,b) => b.depth - a.depth);
 
   // 寸法
   const ow=OW*sv, oh=OH*sv, od2=OD*sv, ext=18;
@@ -487,14 +474,10 @@ function Isometric3D({ data }) {
   return (
     <svg width={SW} height={SH} viewBox={`0 0 ${SW} ${SH}`}
       style={{background:"#fafafa",maxWidth:"100%",display:"block"}} xmlns="http://www.w3.org/2000/svg">
-      {[...comps].sort((a,b)=>{
-        // 天板は最後に描画（一番上に表示）
-        const aIsTop = (a.part_name||"").includes("天板");
-        const bIsTop = (b.part_name||"").includes("天板");
-        if (aIsTop && !bIsTop) return 1;
-        if (!aIsTop && bIsTop) return -1;
-        return (b.position?.z||0)-(a.position?.z||0);
-      }).map((c,i)=>renderComp(c,i))}
+      {allFaces.map(({pts,fill},i)=>{
+        const d2=pts.map(([x,y,z])=>{const p=iso(x,y,z);return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;}).join(" ");
+        return <polygon key={i} points={d2} fill={fill} stroke="#4a3520" strokeWidth={0.7} opacity={0.95}/>;
+      })}
       {/* 寸法線 */}
       <g>
         {[[iso(0,oh,0),pA],[iso(ow,oh,0),pB]].map(([f,t],i)=>(
