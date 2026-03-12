@@ -425,7 +425,7 @@ function Isometric3D({ data }) {
     const colorIdx = isLegComp ? 3 : isTopComp ? 0 : (name.includes("幕板") ? 1 : idx % woodColors.length);
     const cols = woodColors[colorIdx];
     // 脚は最小表示サイズ32pxを確保（四角柱に見えるよう幅・奥行きを十分確保）
-    const minLegPx = 32;
+    const minLegPx = 16;
     const w = isLegComp ? Math.max(W*sv, minLegPx) : W*sv;
     const d = isLegComp ? Math.max(D*sv, minLegPx) : D*sv;
     const h = H*sv;
@@ -1160,7 +1160,7 @@ export default function App() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-opus-4-6",
             max_tokens: maxTokens,
             messages,
           })
