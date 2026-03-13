@@ -285,8 +285,10 @@ function Drawing2D({ data, svgRef, onDimChange }) {
   // 外形線（全体）
   const OutlineRect = ({x,y,w,h}) => <rect x={x} y={y} width={w} height={h} fill="none" stroke="#111" strokeWidth={1.8}/>;
 
-  // 部品をdepth順(背面→前面)にソート
+  // 部品をdepth順(背面→前面)にソート（正面図・平面図用）
   const sortedComps = [...comps].sort((a,b)=>((a.position?.z||0)-(b.position?.z||0)));
+  // 側面図用：z降順（奥→手前）にソートして幕板が後脚に隠れないようにする
+  const sideSortedComps = [...comps].sort((a,b)=>((b.position?.z||0)-(a.position?.z||0)));
 
   return (
     <svg ref={svgRef} width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
@@ -339,7 +341,7 @@ function Drawing2D({ data, svgRef, onDimChange }) {
       <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
       {/* ── 右側面図 ── */}
-      {sortedComps.map((c,i)=><CompSide key={i} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH}/>)}
+      {sideSortedComps.map((c,i)=><CompSide key={i} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH}/>)}
       <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
       <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
       <Dim ax={sOX+sW} ay={sOY} bx={sOX+sW} by={sOY+sH} val={OH} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
@@ -378,6 +380,14 @@ function Drawing2D({ data, svgRef, onDimChange }) {
             const w = W*scF, h = H*scF;
             const cx = px + w/2;
             const ey = py + h + 20;
+            // 脚の高さ寸法（正面図・左側に縦寸法線）
+            notes.push(
+              <Dim key={`lg-h${i}`}
+                ax={px} ay={py}
+                bx={px} by={py+h}
+                val={H} gap={-24} orient="v"/>
+            );
+            // 断面注記（□W×D）
             notes.push(
               <g key={`lg-cs${i}`}>
                 <line x1={cx} y1={py+h+2} x2={cx} y2={ey-2} stroke="#2563eb" strokeWidth={0.5} strokeDasharray="2,1.5"/>
