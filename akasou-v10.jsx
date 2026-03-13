@@ -1020,16 +1020,53 @@ function EasyEditor({ data, onApply }) {
               </div>
             </div>
 
+            {/* 形状 */}
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ ...labelStyle, fontSize: 10 }}>形状 (shape)</label>
+              <select style={{ ...inputStyle, fontSize: 11 }} value={comp.shape || "rect"}
+                onChange={e => setCompField(idx, "shape", e.target.value)}>
+                <option value="rect">rect（角材・板材）</option>
+                <option value="cylinder">cylinder（丸脚）</option>
+                <option value="arc_panel">arc_panel（曲線パネル）</option>
+              </select>
+            </div>
+
             {/* 寸法・数量 */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 8 }}>
               {[["幅 W", "width"], ["高さ H", "height"], ["奥行 D", "depth"], ["板厚", "panel_thickness"], ["数量", "quantity"]].map(([label, key]) => (
                 <div key={key}>
                   <label style={{ ...labelStyle, fontSize: 10 }}>{label}</label>
                   <input type="number" style={{ ...numInputStyle, fontSize: 11 }}
-                    value={comp[key] || ""}
+                    value={comp[key] ?? ""}
                     onChange={e => setCompField(idx, key, +e.target.value)}/>
                 </div>
               ))}
+            </div>
+
+            {/* 位置座標 */}
+            <div style={{ marginTop: 8 }}>
+              <label style={{ ...labelStyle, fontSize: 10, marginBottom: 5 }}>
+                位置座標 (mm)
+                <span style={{ color:"#555", fontWeight:400, fontSize:9, marginLeft:6 }}>X=右方向 / Y=上方向 / Z=奥方向</span>
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                {[["X（幅方向）", "x"], ["Y（高さ方向）", "y"], ["Z（奥行方向）", "z"]].map(([label, axis]) => (
+                  <div key={axis}>
+                    <label style={{ ...labelStyle, fontSize: 9 }}>{label}</label>
+                    <input type="number" style={{ ...numInputStyle, fontSize: 11 }}
+                      value={comp.position?.[axis] ?? 0}
+                      onChange={e => {
+                        const val = +e.target.value;
+                        setD(prev => {
+                          const next = JSON.parse(JSON.stringify(prev));
+                          if (!next.components[idx].position) next.components[idx].position = {};
+                          next.components[idx].position[axis] = val;
+                          return next;
+                        });
+                      }}/>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* 材種・木目・接合 */}
