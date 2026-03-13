@@ -344,6 +344,108 @@ function Drawing2D({ data, svgRef, onDimChange }) {
       <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
       <Dim ax={sOX+sW} ay={sOY} bx={sOX+sW} by={sOY+sH} val={OH} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
+      {/* ── 細部寸法注記（天板厚み・脚断面・幕板高さ/厚み） ── */}
+      {(()=>{
+        const notes = [];
+        comps.forEach((comp, i) => {
+          const name = comp.part_name || "";
+          const W = +(comp.width||0), H = +(comp.height||0), D = +(comp.depth||0);
+          const pos = comp.position || {};
+
+          // ① 天板の厚み → 側面図右側に縦寸法（全体高さ寸法の内側）
+          if (name.includes("天板") && H > 0) {
+            const py = sOY + (OH - (pos.y||0) - H) * scS;
+            const h  = H * scS;
+            notes.push(
+              <Dim key={`tp-t${i}`}
+                ax={sOX+sW} ay={py}
+                bx={sOX+sW} by={py+h}
+                val={H} gap={18} orient="v"/>
+            );
+            // "t=" ラベル
+            notes.push(
+              <text key={`tp-lbl${i}`}
+                x={sOX+sW+20} y={py-5}
+                fontSize={7} fill="#888" fontFamily={MONO}>t={Math.round(H)}</text>
+            );
+          }
+
+          // ② 脚の断面 → 正面図：最初の脚だけに □W×D 注記
+          const isFirstLeg = name.includes("脚") && !comps.slice(0,i).some(c=>(c.part_name||"").includes("脚"));
+          if (isFirstLeg && W > 0 && D > 0) {
+            const px = (pos.x||0)*scF + fOX;
+            const py = fOY + (OH - (pos.y||0) - H)*scF;
+            const w = W*scF, h = H*scF;
+            const cx = px + w/2;
+            const ey = py + h + 20;
+            notes.push(
+              <g key={`lg-cs${i}`}>
+                <line x1={cx} y1={py+h+2} x2={cx} y2={ey-2} stroke="#2563eb" strokeWidth={0.5} strokeDasharray="2,1.5"/>
+                <rect x={cx-26} y={ey-1} width={52} height={13} fill="white" opacity={0.92} rx={1}/>
+                <text x={cx} y={ey+9} textAnchor="middle" fill="#2563eb" fontSize={8.5} fontFamily={MONO} fontWeight="700">
+                  {`□${Math.round(W)}×${Math.round(D)}`}
+                </text>
+              </g>
+            );
+            // 側面図の脚にも断面注記
+            const px2 = (pos.z||0)*scS + sOX;
+            const py2 = sOY + (OH - (pos.y||0) - H)*scS;
+            const d2  = D*scS;
+            const cx2 = px2 + d2/2;
+            const ey2 = py2 + H*scS + 20;
+            notes.push(
+              <g key={`lg-cs2${i}`}>
+                <line x1={cx2} y1={py2+H*scS+2} x2={cx2} y2={ey2-2} stroke="#2563eb" strokeWidth={0.5} strokeDasharray="2,1.5"/>
+                <rect x={cx2-26} y={ey2-1} width={52} height={13} fill="white" opacity={0.92} rx={1}/>
+                <text x={cx2} y={ey2+9} textAnchor="middle" fill="#2563eb" fontSize={8.5} fontFamily={MONO} fontWeight="700">
+                  {`□${Math.round(D)}×${Math.round(W)}`}
+                </text>
+              </g>
+            );
+          }
+
+          // ③ 幕板の高さ → 正面図：各幕板に縦寸法（外形寸法の左に）
+          if (name.includes("幕板") && H > 0) {
+            const px = (pos.x||0)*scF + fOX;
+            const py = fOY + (OH - (pos.y||0) - H)*scF;
+            const h  = H * scF;
+            notes.push(
+              <Dim key={`ap-h${i}`}
+                ax={px} ay={py}
+                bx={px} by={py+h}
+                val={H} gap={-22} orient="v"/>
+            );
+          }
+
+          // ④ 幕板の厚み（短手方向の板厚）
+          //    W < D のとき → Wが板厚 → 正面図で横寸法表示
+          if (name.includes("幕板") && W > 0 && D > 0 && W <= D && W < 80) {
+            const px = (pos.x||0)*scF + fOX;
+            const py = fOY + (OH - (pos.y||0) - H)*scF;
+            const w  = W * scF;
+            notes.push(
+              <Dim key={`ap-w${i}`}
+                ax={px} ay={py}
+                bx={px+w} by={py}
+                val={W} gap={-16}/>
+            );
+          }
+          //    D < W のとき → Dが板厚 → 側面図で横寸法表示
+          if (name.includes("幕板") && W > 0 && D > 0 && D < W && D < 80) {
+            const px2 = (pos.z||0)*scS + sOX;
+            const py2 = sOY + (OH - (pos.y||0) - H)*scS;
+            const w2  = D * scS;
+            notes.push(
+              <Dim key={`ap-d${i}`}
+                ax={px2} ay={py2}
+                bx={px2+w2} by={py2}
+                val={D} gap={-16}/>
+            );
+          }
+        });
+        return <g>{notes}</g>;
+      })()}
+
       {/* 部品バルーン */}
       {comps.slice(0,6).map((c,i)=>{
         const bx=fOX + ((c.position?.x||0) + (c.width||0)/2)*scF;
@@ -399,71 +501,75 @@ function Isometric3D({ data }) {
     y: cy - y + (x+z)*S30,
   });
 
-  // [上面(明), 正面(中), 側面(暗)] — 側面は正面より暗くして等角投影の立体感を出す
   const woodColors = [
-    ["#e8cfaa","#c8a070","#7a5828"],  // 天板
-    ["#d8e8c0","#a8c080","#507040"],  // 幕板系
-    ["#c8d8e8","#8098b8","#406080"],  // 青系
-    ["#e8d8c0","#c8a860","#7a5428"],  // 脚（正面を少し明るく、側面を暗く）
-    ["#d0c8e0","#9888b0","#584070"],  // 紫系
+    ["#e8cfaa","#c8a070","#d4b480"],
+    ["#d8e8c0","#a8c080","#c0d490"],
+    ["#c8d8e8","#8098b8","#90a8c8"],
+    ["#e8d8c0","#b8a070","#c8b080"],
+    ["#d0c8e0","#9888b0","#b0a0c8"],
   ];
 
-  // フェイスレベルのPainter法：すべての面を収集→深度(x+y+z)でソート→描画
-  // この等角投影のカメラ方向は(1,1,1)/√3。深度=x+y+z（大=遠=先に描画）
-  const allFaces = [];
-  const addFace = (pts, fill) => {
-    const depth = pts.reduce((s,[x,y,z])=>s+x+y+z, 0) / pts.length;
-    allFaces.push({ pts, fill, depth });
+  const face=(pts,fill)=>{
+    const d2=pts.map(([x,y,z])=>{const p=iso(x,y,z);return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;}).join(" ");
+    return <polygon points={d2} fill={fill} stroke="#4a3520" strokeWidth={0.7} opacity={0.95}/>;
   };
 
-  comps.forEach((comp, idx) => {
+  // 各部品を箱として描画（arc_panelは近似）
+  const renderComp = (comp, idx) => {
     const { shape="rect", width:W=0, height:H=0, depth:D=0,
       position:pos={}, arc_radius } = comp;
+    const x=(pos.x||0)*sv, y=(pos.y||0)*sv, z=(pos.z||0)*sv;
+    // 部品タイプで色を決定（脚は全部同じ色、天板は別色）
     const name = comp.part_name || "";
-    const isLegComp = name.includes("脚") || name.toLowerCase().includes("leg");
+    const isLegComp = name.includes("脚");
     const isTopComp = name.includes("天板");
     const colorIdx = isLegComp ? 3 : isTopComp ? 0 : (name.includes("幕板") ? 1 : idx % woodColors.length);
     const cols = woodColors[colorIdx];
-    const minLegPx = 20;
-    const xp=(pos.x||0)*sv, yp=(pos.y||0)*sv, zp=(pos.z||0)*sv;
+    // 脚は最小表示サイズ16pxを確保
+    const minLegPx = 16;
     const w = isLegComp ? Math.max(W*sv, minLegPx) : W*sv;
     const d = isLegComp ? Math.max(D*sv, minLegPx) : D*sv;
     const h = H*sv;
 
     if (shape==="cylinder") {
-      const r=w/2, n=8;
+      const r=w/2;
+      // 近似：八角柱
+      const n=8;
+      const segs=[];
       for (let i=0;i<n;i++) {
         const a1=(i/n)*Math.PI*2, a2=((i+1)/n)*Math.PI*2;
-        const x1c=xp+r+r*Math.cos(a1), z1c=zp+r+r*Math.sin(a1);
-        const x2c=xp+r+r*Math.cos(a2), z2c=zp+r+r*Math.sin(a2);
-        addFace([[x1c,yp,z1c],[x2c,yp,z2c],[x2c,yp+h,z2c],[x1c,yp+h,z1c]], cols[0]);
+        const x1c=x+r+r*Math.cos(a1), z1c=z+r+r*Math.sin(a1);
+        const x2c=x+r+r*Math.cos(a2), z2c=z+r+r*Math.sin(a2);
+        segs.push(face([[x1c,y,z1c],[x2c,y,z2c],[x2c,y+h,z2c],[x1c,y+h,z1c]],cols[0]));
       }
-      return;
+      return <g key={idx}>{segs}</g>;
     }
+
     if (shape==="arc_panel" && arc_radius) {
       const R=arc_radius*sv;
       const n=12, sa=(comp.arc_start_deg||180)*Math.PI/180, ea=(comp.arc_end_deg||360)*Math.PI/180;
+      const segs=[];
       for (let i=0;i<n;i++) {
         const a1=sa+(ea-sa)*(i/n), a2=sa+(ea-sa)*((i+1)/n);
-        const x1c=xp+w/2+R*Math.cos(a1), z1c=zp+d/2+R*Math.sin(a1);
-        const x2c=xp+w/2+R*Math.cos(a2), z2c=zp+d/2+R*Math.sin(a2);
-        addFace([[x1c,yp,z1c],[x2c,yp,z2c],[x2c,yp+h,z2c],[x1c,yp+h,z1c]], cols[0]);
+        const x1c=x+w/2+R*Math.cos(a1), z1c=z+d/2+R*Math.sin(a1);
+        const x2c=x+w/2+R*Math.cos(a2), z2c=z+d/2+R*Math.sin(a2);
+        segs.push(face([[x1c,y,z1c],[x2c,y,z2c],[x2c,y+h,z2c],[x1c,y+h,z1c]],cols[0]));
       }
-      return;
+      return <g key={idx}>{segs}</g>;
     }
 
-    // 通常の直方体：可視面はX-（左）・Y+（上）・Z-（正面）の3面
-    // 奥行きが大きいパネル(D>W*3)はX-・Y+面がついたて状になるので非表示
-    const isSlenderPanel = D > W * 3;
-    if (!isSlenderPanel) {
-      addFace([[xp,yp,zp],[xp,yp,zp+d],[xp,yp+h,zp+d],[xp,yp+h,zp]], cols[2]); // X-面（左）
-      addFace([[xp,yp+h,zp],[xp+w,yp+h,zp],[xp+w,yp+h,zp+d],[xp,yp+h,zp+d]], cols[0]); // Y+面（上）
-    }
-    addFace([[xp,yp,zp],[xp+w,yp,zp],[xp+w,yp+h,zp],[xp,yp+h,zp]], cols[1]); // Z-面（正面）
-  });
-
-  // 深度降順ソート（遠い面から順に描画）
-  allFaces.sort((a,b) => b.depth - a.depth);
+    // 通常の直方体
+    // Z方向が主軸のパネル（短手幕板など）は右面をスキップ→「ついたて」防止
+    const isZPanel = D > W * 2;
+    return <g key={idx}>
+      {/* 上面 */}
+      {face([[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]],cols[0])}
+      {/* 正面 */}
+      {face([[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],cols[1])}
+      {/* 右面：Z方向主体パネルはスキップ */}
+      {!isZPanel && face([[x+w,y,z],[x+w,y,z+d],[x+w,y+h,z+d],[x+w,y+h,z]],cols[2])}
+    </g>;
+  };
 
   // 寸法
   const ow=OW*sv, oh=OH*sv, od2=OD*sv, ext=18;
@@ -474,10 +580,14 @@ function Isometric3D({ data }) {
   return (
     <svg width={SW} height={SH} viewBox={`0 0 ${SW} ${SH}`}
       style={{background:"#fafafa",maxWidth:"100%",display:"block"}} xmlns="http://www.w3.org/2000/svg">
-      {allFaces.map(({pts,fill},i)=>{
-        const d2=pts.map(([x,y,z])=>{const p=iso(x,y,z);return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;}).join(" ");
-        return <polygon key={i} points={d2} fill={fill} stroke="#4a3520" strokeWidth={0.7} opacity={0.95}/>;
-      })}
+      {[...comps].sort((a,b)=>{
+        // 天板は最後に描画（一番上に表示）
+        const aIsTop = (a.part_name||"").includes("天板");
+        const bIsTop = (b.part_name||"").includes("天板");
+        if (aIsTop && !bIsTop) return 1;
+        if (!aIsTop && bIsTop) return -1;
+        return (b.position?.z||0)-(a.position?.z||0);
+      }).map((c,i)=>renderComp(c,i))}
       {/* 寸法線 */}
       <g>
         {[[iso(0,oh,0),pA],[iso(ow,oh,0),pB]].map(([f,t],i)=>(
@@ -1142,7 +1252,7 @@ export default function App() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "claude-opus-4-6",
+            model: "claude-sonnet-4-20250514",
             max_tokens: maxTokens,
             messages,
           })
@@ -1236,7 +1346,7 @@ export default function App() {
       <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,padding:"11px 20px",display:"flex",alignItems:"center",gap:16}}>
         <div>
           <div style={{fontSize:17,fontWeight:900,letterSpacing:6}}>赤 装</div>
-          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v25</div>
+          <div style={{fontSize:8,color:C.sub,letterSpacing:2,marginTop:1}}>MOKKOUJYO — PROFESSIONAL DRAWING SYSTEM v24</div>
         </div>
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
