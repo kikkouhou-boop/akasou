@@ -257,7 +257,7 @@ function CompTop({ comp, ox,oy, sc, totalD }) {
 // ══════════════════════════════════════════════════
 // 2D JIS図面シート（コンポーネント駆動）
 // ══════════════════════════════════════════════════
-function Drawing2D({ data, svgRef, onDimChange }) {
+function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
   if (!data) return null;
   const { overall_dimensions:od={}, components:comps=[], furniture_name, material } = data;
   const OW=+od.width||800, OH=+od.height||750, OD=+od.depth||500;
@@ -346,110 +346,115 @@ function Drawing2D({ data, svgRef, onDimChange }) {
       <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
       <Dim ax={sOX+sW} ay={sOY} bx={sOX+sW} by={sOY+sH} val={OH} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
-      {/* ── 細部寸法注記（天板厚み・脚断面・幕板高さ/厚み） ── */}
+      {/* ── 細部寸法注記（天板厚み・脚断面・幕板高さ/厚み）── 全てクリック編集可 */}
       {(()=>{
         const notes = [];
         comps.forEach((comp, i) => {
           const name = comp.part_name || "";
           const W = +(comp.width||0), H = +(comp.height||0), D = +(comp.depth||0);
           const pos = comp.position || {};
+          const cd = (field, val) => onCompDimChange && onCompDimChange(i, field, val);
 
-          // ① 天板の厚み → 側面図右側に縦寸法（全体高さ寸法の内側）
+          // ① 天板の厚み → 側面図右側に縦寸法（クリック編集可）
           if (name.includes("天板") && H > 0) {
             const py = sOY + (OH - (pos.y||0) - H) * scS;
             const h  = H * scS;
             notes.push(
-              <Dim key={`tp-t${i}`}
-                ax={sOX+sW} ay={py}
-                bx={sOX+sW} by={py+h}
-                val={H} gap={18} orient="v"/>
-            );
-            // "t=" ラベル
-            notes.push(
-              <text key={`tp-lbl${i}`}
-                x={sOX+sW+20} y={py-5}
-                fontSize={7} fill="#888" fontFamily={MONO}>t={Math.round(H)}</text>
+              <g key={`tp-t${i}`}>
+                <Dim ax={sOX+sW} ay={py} bx={sOX+sW} by={py+h}
+                  val={H} gap={18} orient="v"
+                  onEdit={v => cd("height", v)}/>
+                <text x={sOX+sW+44} y={py-4}
+                  fontSize={7} fill="#888" fontFamily={MONO}>t</text>
+              </g>
             );
           }
 
-          // ② 脚の断面 → 正面図：最初の脚だけに □W×D 注記
+          // ② 脚：最初の1本に代表寸法を表示
           const isFirstLeg = name.includes("脚") && !comps.slice(0,i).some(c=>(c.part_name||"").includes("脚"));
           if (isFirstLeg && W > 0 && D > 0) {
             const px = (pos.x||0)*scF + fOX;
             const py = fOY + (OH - (pos.y||0) - H)*scF;
             const w = W*scF, h = H*scF;
-            const cx = px + w/2;
-            const ey = py + h + 20;
-            // 脚の高さ寸法（正面図・左側に縦寸法線）
+
+            // 脚の高さ寸法（正面図・左側縦寸法線、クリック編集可）
             notes.push(
               <Dim key={`lg-h${i}`}
-                ax={px} ay={py}
-                bx={px} by={py+h}
-                val={H} gap={-24} orient="v"/>
+                ax={px} ay={py} bx={px} by={py+h}
+                val={H} gap={-26} orient="v"
+                onEdit={v => {
+                  // 全脚に同じ高さを適用
+                  if (!onCompDimChange) return;
+                  comps.forEach((c2, i2) => {
+                    if ((c2.part_name||"").includes("脚")) onCompDimChange(i2, "height", v);
+                  });
+                }}/>
             );
-            // 断面注記（□W×D）
+
+            // 脚の幅W（正面図・脚の下に横寸法、クリック編集可）
             notes.push(
-              <g key={`lg-cs${i}`}>
-                <line x1={cx} y1={py+h+2} x2={cx} y2={ey-2} stroke="#2563eb" strokeWidth={0.5} strokeDasharray="2,1.5"/>
-                <rect x={cx-26} y={ey-1} width={52} height={13} fill="white" opacity={0.92} rx={1}/>
-                <text x={cx} y={ey+9} textAnchor="middle" fill="#2563eb" fontSize={8.5} fontFamily={MONO} fontWeight="700">
-                  {`□${Math.round(W)}×${Math.round(D)}`}
-                </text>
-              </g>
+              <Dim key={`lg-w${i}`}
+                ax={px} ay={py+h} bx={px+w} by={py+h}
+                val={W} gap={20}
+                onEdit={v => {
+                  if (!onCompDimChange) return;
+                  comps.forEach((c2, i2) => {
+                    if ((c2.part_name||"").includes("脚")) onCompDimChange(i2, "width", v);
+                  });
+                }}/>
             );
-            // 側面図の脚にも断面注記
+
+            // 脚の奥行D → 側面図の脚の下に横寸法（クリック編集可）
             const px2 = (pos.z||0)*scS + sOX;
             const py2 = sOY + (OH - (pos.y||0) - H)*scS;
-            const d2  = D*scS;
-            const cx2 = px2 + d2/2;
-            const ey2 = py2 + H*scS + 20;
+            const dPx = D*scS;
             notes.push(
-              <g key={`lg-cs2${i}`}>
-                <line x1={cx2} y1={py2+H*scS+2} x2={cx2} y2={ey2-2} stroke="#2563eb" strokeWidth={0.5} strokeDasharray="2,1.5"/>
-                <rect x={cx2-26} y={ey2-1} width={52} height={13} fill="white" opacity={0.92} rx={1}/>
-                <text x={cx2} y={ey2+9} textAnchor="middle" fill="#2563eb" fontSize={8.5} fontFamily={MONO} fontWeight="700">
-                  {`□${Math.round(D)}×${Math.round(W)}`}
-                </text>
-              </g>
+              <Dim key={`lg-d${i}`}
+                ax={px2} ay={py2+H*scS} bx={px2+dPx} by={py2+H*scS}
+                val={D} gap={20}
+                onEdit={v => {
+                  if (!onCompDimChange) return;
+                  comps.forEach((c2, i2) => {
+                    if ((c2.part_name||"").includes("脚")) onCompDimChange(i2, "depth", v);
+                  });
+                }}/>
             );
           }
 
-          // ③ 幕板の高さ → 正面図：各幕板に縦寸法（外形寸法の左に）
+          // ③ 幕板の高さ → 正面図（クリック編集可）
           if (name.includes("幕板") && H > 0) {
             const px = (pos.x||0)*scF + fOX;
             const py = fOY + (OH - (pos.y||0) - H)*scF;
             const h  = H * scF;
             notes.push(
               <Dim key={`ap-h${i}`}
-                ax={px} ay={py}
-                bx={px} by={py+h}
-                val={H} gap={-22} orient="v"/>
+                ax={px} ay={py} bx={px} by={py+h}
+                val={H} gap={-22} orient="v"
+                onEdit={v => cd("height", v)}/>
             );
           }
 
-          // ④ 幕板の厚み（短手方向の板厚）
-          //    W < D のとき → Wが板厚 → 正面図で横寸法表示
+          // ④ 幕板の板厚 → 正面図または側面図（クリック編集可）
           if (name.includes("幕板") && W > 0 && D > 0 && W <= D && W < 80) {
             const px = (pos.x||0)*scF + fOX;
             const py = fOY + (OH - (pos.y||0) - H)*scF;
             const w  = W * scF;
             notes.push(
               <Dim key={`ap-w${i}`}
-                ax={px} ay={py}
-                bx={px+w} by={py}
-                val={W} gap={-16}/>
+                ax={px} ay={py} bx={px+w} by={py}
+                val={W} gap={-16}
+                onEdit={v => cd("width", v)}/>
             );
           }
-          //    D < W のとき → Dが板厚 → 側面図で横寸法表示
           if (name.includes("幕板") && W > 0 && D > 0 && D < W && D < 80) {
             const px2 = (pos.z||0)*scS + sOX;
             const py2 = sOY + (OH - (pos.y||0) - H)*scS;
             const w2  = D * scS;
             notes.push(
               <Dim key={`ap-d${i}`}
-                ax={px2} ay={py2}
-                bx={px2+w2} by={py2}
-                val={D} gap={-16}/>
+                ax={px2} ay={py2} bx={px2+w2} by={py2}
+                val={D} gap={-16}
+                onEdit={v => cd("depth", v)}/>
             );
           }
         });
@@ -1377,6 +1382,20 @@ export default function App() {
     setRawJson(s); setJsonEdit(s);
   };
 
+  // 部品個別の寸法変更（2D図面上のクリック編集用）
+  const handleCompDimChange = (idx, field, val) => {
+    if (!data) return;
+    const updated = {
+      ...data,
+      components: data.components.map((c, i) =>
+        i === idx ? { ...c, [field]: val } : c
+      )
+    };
+    setData(updated);
+    const s = JSON.stringify(updated, null, 2);
+    setRawJson(s); setJsonEdit(s);
+  };
+
   const TABS = [
     { key:"2d",    label:"2D図面（JIS）" },
     { key:"3d",    label:"3Dモデル" },
@@ -1501,7 +1520,7 @@ export default function App() {
 
               {tab==="2d" && (
                 <div style={{overflowX:"auto"}}>
-                  <Drawing2D data={data} svgRef={svgRef} onDimChange={handleDimChange}/>
+                  <Drawing2D data={data} svgRef={svgRef} onDimChange={handleDimChange} onCompDimChange={handleCompDimChange}/>
                 </div>
               )}
 
