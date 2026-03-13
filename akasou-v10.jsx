@@ -290,6 +290,16 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
   // 側面図用：z降順（奥→手前）にソートして幕板が後脚に隠れないようにする
   const sideSortedComps = [...comps].sort((a,b)=>((b.position?.z||0)-(a.position?.z||0)));
 
+  // ── 縮尺の自動計算（JIS標準縮尺に丸める）──
+  const physMmPerPx = 420 / SVG_W; // A3横の場合
+  const rawN = 1 / (scF * physMmPerPx);
+  const stdScales = [1,2,5,10,20,25,50,100,200];
+  const scaleN = stdScales.reduce((p,c)=>Math.abs(c-rawN)<Math.abs(p-rawN)?c:p);
+  const scaleLabel = `1:${scaleN}`;
+
+  // 中心線パターン（長点線）
+  const CL = "12,3,2,3";
+
   return (
     <svg ref={svgRef} width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
       style={{background:"#fff",maxWidth:"100%",display:"block",border:"1px solid #ccc"}}
@@ -314,39 +324,43 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         <text x={x} y={y+10} textAnchor="middle" fontSize={7} fill="#999" fontFamily={SANS}>{en}</text>
       </g>)}
 
-      {/* 投影補助線 */}
-      <line x1={fOX} y1={fOY} x2={tOX} y2={tOY+tD} stroke="#ccc" strokeWidth={0.35} strokeDasharray="3,2"/>
-      <line x1={fOX+fW} y1={fOY} x2={tOX+tW} y2={tOY+tD} stroke="#ccc" strokeWidth={0.35} strokeDasharray="3,2"/>
-      <line x1={fOX+fW} y1={fOY} x2={sOX} y2={sOY} stroke="#ccc" strokeWidth={0.35} strokeDasharray="3,2"/>
-      <line x1={fOX+fW} y1={fOY+fH} x2={sOX} y2={sOY+sH} stroke="#ccc" strokeWidth={0.35} strokeDasharray="3,2"/>
+      {/* 投影補助線（正面→平面、正面→側面） */}
+      <line x1={fOX}    y1={fOY}    x2={tOX}    y2={tOY+tD} stroke="#ccc" strokeWidth={0.35} strokeDasharray="3,2"/>
+      <line x1={fOX+fW} y1={fOY}    x2={tOX+tW} y2={tOY+tD} stroke="#ccc" strokeWidth={0.35} strokeDasharray="3,2"/>
+      <line x1={fOX+fW} y1={fOY}    x2={sOX}    y2={sOY}    stroke="#ccc" strokeWidth={0.35} strokeDasharray="3,2"/>
+      <line x1={fOX+fW} y1={fOY+fH} x2={sOX}    y2={sOY+sH} stroke="#ccc" strokeWidth={0.35} strokeDasharray="3,2"/>
 
       {/* ── 正面図 ── */}
       {sortedComps.map((c,i)=><CompFront key={i} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH}/>)}
       {sortedComps.map((c,i)=><CompDimLabel key={`dl${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH}/>)}
       <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
-      {/* 中心線 */}
-      <line x1={fOX+fW/2} y1={fOY+4} x2={fOX+fW/2} y2={fOY+fH-4} stroke="#888" strokeWidth={0.5} strokeDasharray="8,3,1,3"/>
-      {/* 断面指示線 */}
-      <line x1={fOX-14} y1={fOY+fH*0.4} x2={fOX+fW+14} y2={fOY+fH*0.4} stroke="#cc2200" strokeWidth={0.8} strokeDasharray="6,3,1,3"/>
-      <text x={fOX-12} y={fOY+fH*0.4-4} fontSize={8} fill="#cc2200" fontFamily={MONO} fontWeight="700">A</text>
-      <text x={fOX+fW+8} y={fOY+fH*0.4-4} fontSize={8} fill="#cc2200" fontFamily={MONO} fontWeight="700">A</text>
-      {/* 寸法 */}
+      {/* 中心線（縦・横）*/}
+      <line x1={fOX+fW/2} y1={fOY-8}   x2={fOX+fW/2} y2={fOY+fH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+      <line x1={fOX-8}    y1={fOY+fH/2} x2={fOX+fW+8} y2={fOY+fH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+      {/* 寸法（断面指示線は削除。断面図本体がないため） */}
       <Dim ax={fOX} ay={fOY} bx={fOX+fW} by={fOY} val={OW} gap={-38} onEdit={v=>onDimChange&&onDimChange("width",v)}/>
       <Dim ax={fOX+fW} ay={fOY} bx={fOX+fW} by={fOY+fH} val={OH} gap={44} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
       {/* ── 平面図 ── */}
       {sortedComps.map((c,i)=><CompTop key={i} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD}/>)}
       <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
+      {/* 中心線（縦・横） */}
+      <line x1={tOX+tW/2} y1={tOY-8}    x2={tOX+tW/2} y2={tOY+tD+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+      <line x1={tOX-8}    y1={tOY+tD/2} x2={tOX+tW+8} y2={tOY+tD/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+      {/* 寸法（Wのみ。Dは側面図に重複するため削除） */}
       <Dim ax={tOX} ay={tOY} bx={tOX+tW} by={tOY} val={OW} gap={-32} onEdit={v=>onDimChange&&onDimChange("width",v)}/>
-      <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
       {/* ── 右側面図 ── */}
       {sideSortedComps.map((c,i)=><CompSide key={i} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH}/>)}
       <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
+      {/* 中心線（縦・横） */}
+      <line x1={sOX+sW/2} y1={sOY-8}    x2={sOX+sW/2} y2={sOY+sH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+      <line x1={sOX-8}    y1={sOY+sH/2} x2={sOX+sW+8} y2={sOY+sH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+      {/* 寸法（Dは側面図のみ。Hも側面図のみ。正面図と重複させない） */}
       <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
       <Dim ax={sOX+sW} ay={sOY} bx={sOX+sW} by={sOY+sH} val={OH} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
-      {/* ── 細部寸法注記（天板厚み・脚断面・幕板高さ/厚み）── 全てクリック編集可 */}
+      {/* ── 細部寸法注記（天板厚み・脚・幕板）── 全てクリック編集可 */}
       {(()=>{
         const notes = [];
         comps.forEach((comp, i) => {
@@ -355,7 +369,7 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
           const pos = comp.position || {};
           const cd = (field, val) => onCompDimChange && onCompDimChange(i, field, val);
 
-          // ① 天板の厚み → 側面図右側に縦寸法（クリック編集可）
+          // ① 天板の厚み → 側面図右側（クリック編集可）
           if (name.includes("天板") && H > 0) {
             const py = sOY + (OH - (pos.y||0) - H) * scS;
             const h  = H * scS;
@@ -364,97 +378,65 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
                 <Dim ax={sOX+sW} ay={py} bx={sOX+sW} by={py+h}
                   val={H} gap={18} orient="v"
                   onEdit={v => cd("height", v)}/>
-                <text x={sOX+sW+44} y={py-4}
-                  fontSize={7} fill="#888" fontFamily={MONO}>t</text>
+                <text x={sOX+sW+44} y={py-4} fontSize={7} fill="#888" fontFamily={MONO}>t</text>
               </g>
             );
           }
 
-          // ② 脚：最初の1本に代表寸法を表示
+          // ② 脚：最初の1本に代表寸法（全脚に一括反映）
           const isFirstLeg = name.includes("脚") && !comps.slice(0,i).some(c=>(c.part_name||"").includes("脚"));
           if (isFirstLeg && W > 0 && D > 0) {
             const px = (pos.x||0)*scF + fOX;
             const py = fOY + (OH - (pos.y||0) - H)*scF;
             const w = W*scF, h = H*scF;
-
-            // 脚の高さ寸法（正面図・左側縦寸法線、クリック編集可）
+            const allLegs = (v, field) => {
+              if (!onCompDimChange) return;
+              comps.forEach((c2, i2) => { if ((c2.part_name||"").includes("脚")) onCompDimChange(i2, field, v); });
+            };
+            // 高さ（正面図・左側）
             notes.push(
-              <Dim key={`lg-h${i}`}
-                ax={px} ay={py} bx={px} by={py+h}
-                val={H} gap={-26} orient="v"
-                onEdit={v => {
-                  // 全脚に同じ高さを適用
-                  if (!onCompDimChange) return;
-                  comps.forEach((c2, i2) => {
-                    if ((c2.part_name||"").includes("脚")) onCompDimChange(i2, "height", v);
-                  });
-                }}/>
+              <Dim key={`lg-h${i}`} ax={px} ay={py} bx={px} by={py+h}
+                val={H} gap={-26} orient="v" onEdit={v=>allLegs(v,"height")}/>
             );
-
-            // 脚の幅W（正面図・脚の下に横寸法、クリック編集可）
+            // 幅W（正面図・脚の下）※図形から12px離す
             notes.push(
-              <Dim key={`lg-w${i}`}
-                ax={px} ay={py+h} bx={px+w} by={py+h}
-                val={W} gap={20}
-                onEdit={v => {
-                  if (!onCompDimChange) return;
-                  comps.forEach((c2, i2) => {
-                    if ((c2.part_name||"").includes("脚")) onCompDimChange(i2, "width", v);
-                  });
-                }}/>
+              <Dim key={`lg-w${i}`} ax={px} ay={py+h} bx={px+w} by={py+h}
+                val={W} gap={22} onEdit={v=>allLegs(v,"width")}/>
             );
-
-            // 脚の奥行D → 側面図の脚の下に横寸法（クリック編集可）
+            // 奥行D（側面図・脚の下）
             const px2 = (pos.z||0)*scS + sOX;
             const py2 = sOY + (OH - (pos.y||0) - H)*scS;
-            const dPx = D*scS;
             notes.push(
-              <Dim key={`lg-d${i}`}
-                ax={px2} ay={py2+H*scS} bx={px2+dPx} by={py2+H*scS}
-                val={D} gap={20}
-                onEdit={v => {
-                  if (!onCompDimChange) return;
-                  comps.forEach((c2, i2) => {
-                    if ((c2.part_name||"").includes("脚")) onCompDimChange(i2, "depth", v);
-                  });
-                }}/>
+              <Dim key={`lg-d${i}`} ax={px2} ay={py2+H*scS} bx={px2+D*scS} by={py2+H*scS}
+                val={D} gap={22} onEdit={v=>allLegs(v,"depth")}/>
             );
           }
 
-          // ③ 幕板の高さ → 正面図（クリック編集可）
+          // ③ 幕板の高さ → 正面図（図形から12px離す）
           if (name.includes("幕板") && H > 0) {
             const px = (pos.x||0)*scF + fOX;
             const py = fOY + (OH - (pos.y||0) - H)*scF;
-            const h  = H * scF;
             notes.push(
-              <Dim key={`ap-h${i}`}
-                ax={px} ay={py} bx={px} by={py+h}
-                val={H} gap={-22} orient="v"
-                onEdit={v => cd("height", v)}/>
+              <Dim key={`ap-h${i}`} ax={px} ay={py} bx={px} by={py+H*scF}
+                val={H} gap={-28} orient="v" onEdit={v=>cd("height", v)}/>
             );
           }
 
-          // ④ 幕板の板厚 → 正面図または側面図（クリック編集可）
+          // ④ 幕板の板厚（短手＜80mm）
           if (name.includes("幕板") && W > 0 && D > 0 && W <= D && W < 80) {
             const px = (pos.x||0)*scF + fOX;
             const py = fOY + (OH - (pos.y||0) - H)*scF;
-            const w  = W * scF;
             notes.push(
-              <Dim key={`ap-w${i}`}
-                ax={px} ay={py} bx={px+w} by={py}
-                val={W} gap={-16}
-                onEdit={v => cd("width", v)}/>
+              <Dim key={`ap-w${i}`} ax={px} ay={py} bx={px+W*scF} by={py}
+                val={W} gap={-18} onEdit={v=>cd("width", v)}/>
             );
           }
           if (name.includes("幕板") && W > 0 && D > 0 && D < W && D < 80) {
             const px2 = (pos.z||0)*scS + sOX;
             const py2 = sOY + (OH - (pos.y||0) - H)*scS;
-            const w2  = D * scS;
             notes.push(
-              <Dim key={`ap-d${i}`}
-                ax={px2} ay={py2} bx={px2+w2} by={py2}
-                val={D} gap={-16}
-                onEdit={v => cd("depth", v)}/>
+              <Dim key={`ap-d${i}`} ax={px2} ay={py2} bx={px2+D*scS} by={py2}
+                val={D} gap={-18} onEdit={v=>cd("depth", v)}/>
             );
           }
         });
@@ -485,8 +467,8 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         [SVG_W*0.3+8,SVG_H-TBH+28,11,"#333",material||"—"],
         [SVG_W*0.3+8,SVG_H-TBH+44,7,"#888",`W${OW}×H${OH}×D${OD} mm`],
         [SVG_W*0.3+8,SVG_H-TBH+58,7,"#aaa","一般公差 ±0.5mm / 角度 ±0.5°"],
-        [SVG_W*0.52+8,SVG_H-TBH+12,7,"#aaa","縮尺"],
-        [SVG_W*0.52+8,SVG_H-TBH+28,10,"#333","1:10"],
+        [SVG_W*0.52+8,SVG_H-TBH+12,7,"#aaa","縮尺 / SCALE"],
+        [SVG_W*0.52+8,SVG_H-TBH+28,10,"#333",scaleLabel],
         [SVG_W*0.67+8,SVG_H-TBH+12,7,"#aaa","図番"],
         [SVG_W*0.67+8,SVG_H-TBH+28,10,"#333",`AKS-${new Date().getFullYear()}-001`],
         [SVG_W*0.82+8,SVG_H-TBH+12,7,"#aaa","作成日"],
