@@ -336,9 +336,8 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
       */}
       {sortedComps.map((c,i)=><CompFront key={i} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH}/>)}
       <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
-      {/* 中心線：左右対称な場合のみ縦線を引く（非対称家具への誤表示を防ぐ） */}
+      {/* 中心線：縦（左右対称）のみ。横中心線は上下非対称なので引かない */}
       {(()=>{
-        // 全部品のx重心が全体幅の中央付近（±10%以内）なら対称とみなす
         const allX = comps.map(c=>((c.position?.x||0)+(c.width||0)/2));
         const avgX = allX.reduce((s,v)=>s+v,0)/allX.length;
         const isSymX = Math.abs(avgX - OW/2) < OW*0.1;
@@ -347,32 +346,30 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         const isSymZ = Math.abs(avgZ - OD/2) < OD*0.1;
         return <>
           {isSymX && <line x1={fOX+fW/2} y1={fOY-8} x2={fOX+fW/2} y2={fOY+fH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
-          <line x1={fOX-8} y1={fOY+fH/2} x2={fOX+fW+8} y2={fOY+fH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
           {isSymX && <line x1={tOX+tW/2} y1={tOY-8} x2={tOX+tW/2} y2={tOY+tD+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
-          {isSymZ && <line x1={tOX-8} y1={tOY+tD/2} x2={tOX+tW+8} y2={tOY+tD/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
           {isSymZ && <line x1={sOX+sW/2} y1={sOY-8} x2={sOX+sW/2} y2={sOY+sH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
-          <line x1={sOX-8} y1={sOY+sH/2} x2={sOX+sW+8} y2={sOY+sH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
         </>;
       })()}
+      {/* OW：正面図上のみ（平面図には出さない） */}
       <Dim ax={fOX} ay={fOY} bx={fOX+fW} by={fOY} val={OW} gap={-38} onEdit={v=>onDimChange&&onDimChange("width",v)}/>
+      {/* OH：正面図右のみ（側面図には出さない） */}
       <Dim ax={fOX+fW} ay={fOY} bx={fOX+fW} by={fOY+fH} val={OH} gap={44} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
       {/* ── 平面図 ──
-          ・OW（幅）：平面図上部（正面図と投影が対応）
-          ・OD（奥行き）：平面図右側のみ（側面図と重複させない）
+          ・OW：正面図と重複するため削除
+          ・OD：平面図右側のみ
       */}
       {sortedComps.map((c,i)=><CompTop key={i} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD}/>)}
       <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
-      <Dim ax={tOX} ay={tOY} bx={tOX+tW} by={tOY} val={OW} gap={-28} onEdit={v=>onDimChange&&onDimChange("width",v)}/>
       <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
       {/* ── 右側面図 ──
-          ・OD（奥行き）：側面図上部（平面図と重複しない→削除）
-          ・OH（高さ）：側面図右側に追加（正面図とともに両方に記入）
+          ・OD：側面図上部に追加（側面図を見たときに奥行きがわかるように）
+          ・OH：側面図右には出さない（正面図に統一）
       */}
       {sideSortedComps.map((c,i)=><CompSide key={i} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH}/>)}
       <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
-      <Dim ax={sOX+sW} ay={sOY} bx={sOX+sW} by={sOY+sH} val={OH} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
+      <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
       {/* ── 細部寸法（天板厚・脚・幕板）── 全てクリック編集可 */}
       {(()=>{
