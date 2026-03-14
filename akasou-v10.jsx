@@ -331,36 +331,48 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
       <line x1={fOX+fW} y1={fOY+fH} x2={sOX}    y2={sOY+sH} stroke="#ccc" strokeWidth={0.35} strokeDasharray="3,2"/>
 
       {/* ── 正面図 ──
-          ・CompDimLabel（部品内ラベル）は廃止→細部寸法線に統一
-          ・OW（幅）：正面図のみ
-          ・OH（高さ）：正面図のみ（側面図に重複させない）
+          ・OW（幅）：正面図上のみ
+          ・OH（高さ）：正面図右のみ
       */}
       {sortedComps.map((c,i)=><CompFront key={i} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH}/>)}
       <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
-      <line x1={fOX+fW/2} y1={fOY-8}    x2={fOX+fW/2} y2={fOY+fH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
-      <line x1={fOX-8}    y1={fOY+fH/2} x2={fOX+fW+8} y2={fOY+fH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+      {/* 中心線：左右対称な場合のみ縦線を引く（非対称家具への誤表示を防ぐ） */}
+      {(()=>{
+        // 全部品のx重心が全体幅の中央付近（±10%以内）なら対称とみなす
+        const allX = comps.map(c=>((c.position?.x||0)+(c.width||0)/2));
+        const avgX = allX.reduce((s,v)=>s+v,0)/allX.length;
+        const isSymX = Math.abs(avgX - OW/2) < OW*0.1;
+        const allZ = comps.map(c=>((c.position?.z||0)+(c.depth||0)/2));
+        const avgZ = allZ.reduce((s,v)=>s+v,0)/allZ.length;
+        const isSymZ = Math.abs(avgZ - OD/2) < OD*0.1;
+        return <>
+          {isSymX && <line x1={fOX+fW/2} y1={fOY-8} x2={fOX+fW/2} y2={fOY+fH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          <line x1={fOX-8} y1={fOY+fH/2} x2={fOX+fW+8} y2={fOY+fH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+          {isSymX && <line x1={tOX+tW/2} y1={tOY-8} x2={tOX+tW/2} y2={tOY+tD+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          {isSymZ && <line x1={tOX-8} y1={tOY+tD/2} x2={tOX+tW+8} y2={tOY+tD/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          {isSymZ && <line x1={sOX+sW/2} y1={sOY-8} x2={sOX+sW/2} y2={sOY+sH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          <line x1={sOX-8} y1={sOY+sH/2} x2={sOX+sW+8} y2={sOY+sH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+        </>;
+      })()}
       <Dim ax={fOX} ay={fOY} bx={fOX+fW} by={fOY} val={OW} gap={-38} onEdit={v=>onDimChange&&onDimChange("width",v)}/>
       <Dim ax={fOX+fW} ay={fOY} bx={fOX+fW} by={fOY+fH} val={OH} gap={44} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
       {/* ── 平面図 ──
-          ・OW（幅）：正面図と重複のため削除
-          ・OD（奥行き）：平面図右側のみに表示（側面図の上と重複させない）
+          ・OW（幅）：平面図上部（正面図と投影が対応）
+          ・OD（奥行き）：平面図右側のみ（側面図と重複させない）
       */}
       {sortedComps.map((c,i)=><CompTop key={i} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD}/>)}
       <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
-      <line x1={tOX+tW/2} y1={tOY-8}    x2={tOX+tW/2} y2={tOY+tD+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
-      <line x1={tOX-8}    y1={tOY+tD/2} x2={tOX+tW+8} y2={tOY+tD/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
+      <Dim ax={tOX} ay={tOY} bx={tOX+tW} by={tOY} val={OW} gap={-28} onEdit={v=>onDimChange&&onDimChange("width",v)}/>
       <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
       {/* ── 右側面図 ──
-          ・OD（奥行き）：側面図上のみ（平面図と重複しない）
-          ・OH（高さ）：側面図右から削除（正面図に統一）
+          ・OD（奥行き）：側面図上部（平面図と重複しない→削除）
+          ・OH（高さ）：側面図右側に追加（正面図とともに両方に記入）
       */}
       {sideSortedComps.map((c,i)=><CompSide key={i} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH}/>)}
       <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
-      <line x1={sOX+sW/2} y1={sOY-8}    x2={sOX+sW/2} y2={sOY+sH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
-      <line x1={sOX-8}    y1={sOY+sH/2} x2={sOX+sW+8} y2={sOY+sH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>
-      <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
+      <Dim ax={sOX+sW} ay={sOY} bx={sOX+sW} by={sOY+sH} val={OH} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
       {/* ── 細部寸法（天板厚・脚・幕板）── 全てクリック編集可 */}
       {(()=>{
@@ -435,15 +447,18 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         return <g>{notes}</g>;
       })()}
 
-      {/* 部品バルーン（全部品対応・元のcomps順で番号付け → BOM表と一致） */}
+      {/* 部品バルーン（全部品対応・リーダー線は外形線上から引き出す・BOM表と番号一致） */}
       {comps.map((c,i)=>{
-        const bx = fOX + ((c.position?.x||0) + (c.width||0)/2)*scF;
-        const by = fOY + (OH - (c.position?.y||0) - (c.height||0)/2)*scF;
+        const cx = fOX + ((c.position?.x||0) + (c.width||0)/2)*scF;
+        const cy = fOY + (OH - (c.position?.y||0) - (c.height||0)/2)*scF;
         // 図面外に出る部品はバルーン省略
-        if (bx < fOX || bx > fOX+fW || by < fOY || by > fOY+fH) return null;
-        const lx = bx + 18, ly = by - 18;
+        if (cx < fOX || cx > fOX+fW || cy < fOY || cy > fOY+fH) return null;
+        // リーダー線の起点：部品の右上コーナー（外形線上）
+        const ex = fOX + ((c.position?.x||0) + (c.width||0))*scF;
+        const ey = fOY + (OH - (c.position?.y||0) - (c.height||0))*scF;
+        const lx = ex + 18, ly = ey - 14;
         return <g key={i}>
-          <line x1={bx} y1={by} x2={lx} y2={ly} stroke={C.dim} strokeWidth={0.5} strokeDasharray="3,2"/>
+          <line x1={ex} y1={ey} x2={lx} y2={ly} stroke={C.dim} strokeWidth={0.5} strokeDasharray="3,2"/>
           <circle cx={lx+9} cy={ly-4} r={8} fill="white" stroke={C.dim} strokeWidth={0.7}/>
           <text x={lx+9} y={ly-1} textAnchor="middle" fill={C.dim} fontSize={7} fontFamily={MONO} fontWeight="700">{i+1}</text>
         </g>;
