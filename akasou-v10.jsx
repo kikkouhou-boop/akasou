@@ -379,6 +379,9 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         // 幕板の板厚も最初の1本ずつ（前後・左右で形状が異なる場合があるため）
         let apronThickFrontDone = false;
         let apronThickSideDone  = false;
+        // 幕板の長さ（正面・側面それぞれ代表1本）
+        let apronLengthFrontDone = false;
+        let apronLengthSideDone  = false;
 
         comps.forEach((comp, i) => {
           const name = comp.part_name || "";
@@ -439,6 +442,30 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
             const py2 = sOY + (OH - (pos.y||0) - H)*scS;
             notes.push(<Dim key={`ap-d${i}`} ax={px2} ay={py2} bx={px2+D*scS} by={py2} val={D} gap={-18} onEdit={v=>cd("depth",v)}/>);
             apronThickSideDone = true;
+          }
+
+          // ⑤ 長手幕板の長さ（W が主寸法）→ 正面図に横寸法・代表1本
+          //    W > D かつ W >= 80mm → 長手幕板と判断
+          if (name.includes("幕板") && W >= D && W >= 80 && !apronLengthFrontDone) {
+            const px = (pos.x||0)*scF + fOX;
+            const py = fOY + (OH - (pos.y||0) - H)*scF;
+            notes.push(
+              <Dim key={`ap-lf${i}`} ax={px} ay={py+H*scF} bx={px+W*scF} by={py+H*scF}
+                val={W} gap={20} onEdit={v=>cd("width",v)}/>
+            );
+            apronLengthFrontDone = true;
+          }
+
+          // ⑥ 短手幕板の長さ（D が主寸法）→ 側面図に横寸法・代表1本
+          //    D > W かつ D >= 80mm → 短手幕板と判断
+          if (name.includes("幕板") && D > W && D >= 80 && !apronLengthSideDone) {
+            const px2 = (pos.z||0)*scS + sOX;
+            const py2 = sOY + (OH - (pos.y||0) - H)*scS;
+            notes.push(
+              <Dim key={`ap-ls${i}`} ax={px2} ay={py2+H*scS} bx={px2+D*scS} by={py2+H*scS}
+                val={D} gap={20} onEdit={v=>cd("depth",v)}/>
+            );
+            apronLengthSideDone = true;
           }
         });
         return <g>{notes}</g>;
