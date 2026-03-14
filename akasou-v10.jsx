@@ -287,14 +287,17 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
 
   // 部品をdepth順(背面→前面)にソート（正面図・平面図用）
   const sortedComps = [...comps].sort((a,b)=>((a.position?.z||0)-(b.position?.z||0)));
-  // 側面図用：脚を先（奥）に描き、幕板・天板を後（手前）に描く
-  // → 幕板が脚の上に重なり、端が切れて見えなくなる問題を解消
+  // 側面図用ソート：
+  // ① 脚は最初（底）に描画
+  // ② 非脚はdepth昇順（薄い部品＝長手幕板を先、厚い部品＝短手幕板・天板を後）
+  //    → 奥行き方向に長い短手幕板が長手幕板の上に描かれ、右端が切れない
   const sideSortedComps = [...comps].sort((a,b)=>{
     const aIsLeg = (a.part_name||"").includes("脚");
     const bIsLeg = (b.part_name||"").includes("脚");
-    if (aIsLeg && !bIsLeg) return -1;  // 脚は先（奥）に描画
-    if (!aIsLeg && bIsLeg) return 1;   // 幕板・天板は後（手前）に描画
-    return (a.position?.z||0)-(b.position?.z||0);
+    if (aIsLeg && !bIsLeg) return -1;   // 脚は最初
+    if (!aIsLeg && bIsLeg) return 1;    // 非脚は脚より後
+    // 非脚同士：depth昇順（薄いものを先・広いものを後＝上に描画）
+    return (a.depth||0)-(b.depth||0);
   });
 
   // ── 縮尺の自動計算（JIS標準縮尺に丸める）──
