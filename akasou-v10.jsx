@@ -167,17 +167,17 @@ function CompFront({ comp, ox,oy, sc, totalH }) {
   const py = oy + (totalH - (pos.y||0) - H)*sc;
   const w = W*sc, h = H*sc;
 
-  const fill = is_hidden ? "none" : "#e0d8c8";
-  const stroke = "#333";
+  const fill = "none";
+  const stroke = is_hidden ? "#aaa" : "#333";
   const sw = is_hidden ? 0 : 0.8;
   const dashArray = is_hidden ? "4,2" : undefined;
 
   if (shape==="cylinder") {
     const r = (W/2)*sc;
     return <g>
-      <ellipse cx={px+r} cy={py+h} rx={r} ry={r*0.3} fill="#d8d0c0" stroke={stroke} strokeWidth={sw}/>
-      <rect x={px} y={py} width={w} height={h} fill={fill} stroke={stroke} strokeWidth={sw}/>
-      <ellipse cx={px+r} cy={py} rx={r} ry={r*0.3} fill="#e8e0d0" stroke={stroke} strokeWidth={sw}/>
+      <ellipse cx={px+r} cy={py+h} rx={r} ry={r*0.3} fill="none" stroke={stroke} strokeWidth={sw}/>
+      <rect x={px} y={py} width={w} height={h} fill="none" stroke={stroke} strokeWidth={sw}/>
+      <ellipse cx={px+r} cy={py} rx={r} ry={r*0.3} fill="none" stroke={stroke} strokeWidth={sw}/>
     </g>;
   }
   if (shape==="arc_panel" && arc_radius) {
@@ -191,7 +191,6 @@ function CompFront({ comp, ox,oy, sc, totalH }) {
   }
   return <g>
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
-    {!is_hidden && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
 
@@ -202,26 +201,26 @@ function CompSide({ comp, ox,oy, sc, totalH }) {
   const px = (pos.z||0)*sc + ox;
   const py = oy + (totalH - (pos.y||0) - H)*sc;
   const w = D*sc, h = H*sc;
-  const fill = is_hidden ? "none" : "#d8d0c0";
-  const stroke = "#333";
+  // fill="none"にすることでPainter's Algorithm問題を根本解消
+  // JIS図面は線で表現するのが正しく、塗りつぶし不要
+  const fill = "none";
+  const stroke = is_hidden ? "#aaa" : "#333";
   const sw = is_hidden ? 0 : 0.8;
   const dashArray = is_hidden ? "4,2" : undefined;
 
   if (shape==="cylinder") {
-    const r = (W/2)*sc;
     return <g>
-      <ellipse cx={px+w/2} cy={py+h} rx={w/2} ry={w*0.15} fill="#d0c8b8" stroke={stroke} strokeWidth={sw}/>
-      <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <ellipse cx={px+w/2} cy={py+h} rx={w/2} ry={w*0.15} fill="none" stroke={stroke} strokeWidth={sw}/>
+      <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill="none" stroke={stroke} strokeWidth={sw}/>
     </g>;
   }
   if (shape==="arc_panel" && arc_radius) {
     return <g>
-      <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray="4,2"/>
+      <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill="none" stroke={stroke} strokeWidth={sw} strokeDasharray="4,2"/>
     </g>;
   }
   return <g>
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
-    {!is_hidden && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
 
@@ -232,14 +231,14 @@ function CompTop({ comp, ox,oy, sc, totalD }) {
   const px = (pos.x||0)*sc + ox;
   const py = (pos.z||0)*sc + oy;
   const w = W*sc, d = D*sc;
-  const fill = is_hidden ? "none" : "#e8e0d0";
-  const stroke = "#333";
+  const fill = "none";
+  const stroke = is_hidden ? "#aaa" : "#333";
   const sw = is_hidden ? 0 : 0.8;
   const dashArray = is_hidden ? "4,2" : undefined;
 
   if (shape==="cylinder") {
     const r=(W/2)*sc;
-    return <ellipse cx={px+r} cy={py+r} rx={r} ry={r} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>;
+    return <ellipse cx={px+r} cy={py+r} rx={r} ry={r} fill="none" stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>;
   }
   if (shape==="arc_panel" && arc_radius) {
     const R=arc_radius*sc, sa=arc_start_deg||180, ea=arc_end_deg||360;
