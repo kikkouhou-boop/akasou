@@ -287,9 +287,12 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
 
   // 部品をdepth順(背面→前面)にソート（正面図・平面図用）
   const sortedComps = [...comps].sort((a,b)=>((a.position?.z||0)-(b.position?.z||0)));
-  // 側面図用：右側面図は+x方向から見るため、xが小さい部品ほど奥=先に描画。
-  // xが大きい部品（右側の脚・幕板）が手前に来て正しく上に重なる。
-  const sideSortedComps = [...comps].sort((a,b)=>((a.position?.x||0)-(b.position?.x||0)));
+  // 側面図用：x昇順(奥→手前)、x同値のときdepth昇順(薄い部品を先＝奥行き広い短手幕板を上に)
+  const sideSortedComps = [...comps].sort((a,b)=>{
+    const ax = a.position?.x||0, bx = b.position?.x||0;
+    if (ax !== bx) return ax - bx;
+    return (a.depth||0) - (b.depth||0);
+  });
 
   // ── 縮尺の自動計算（JIS標準縮尺に丸める）──
   const physMmPerPx = 420 / SVG_W; // A3横の場合
