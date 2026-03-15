@@ -208,6 +208,9 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
     )}
     {pass==="fill" && !isDoor && !isDrawer && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
+}
+
+// 1部品のSVG描画（側面図）
 // pass="fill"  → 塗りのみ
 // pass="stroke"→ 輪郭線のみ
 function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
