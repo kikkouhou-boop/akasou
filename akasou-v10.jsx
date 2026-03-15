@@ -901,42 +901,66 @@ function BOM({ data }) {
 }
 
 // ══════════════════════════════════════════════════
-// Material Engine v1 ── 材料費・工賃・見積
+// Material Engine v2 ── Cut List + 材料費・工賃・見積
 // ══════════════════════════════════════════════════
 function MaterialEngine({ data }) {
-  const BOARD_W = 1820, BOARD_D = 910; // 3×6板（mm）
-  const YIELD = 0.7; // 歩留まり70%
+  const BOARD_W = 1820, BOARD_H = 910; // 3×6板（mm）
+  const YIELD = 0.7;
 
   const MATERIAL_PRESETS = [
-    { label:"ポリ合板 18mm",  price:5000 },
-    { label:"シナ合板 18mm",  price:7000 },
-    { label:"メラミン 18mm",  price:9000 },
-    { label:"無垢材（杉）",   price:15000 },
-    { label:"無垢材（オーク）",price:35000 },
+    { label:"ポリ合板 18mm",   price:5000,  thickness:18 },
+    { label:"シナ合板 18mm",   price:7000,  thickness:18 },
+    { label:"メラミン 18mm",   price:9000,  thickness:18 },
+    { label:"無垢材（杉）",    price:15000, thickness:30 },
+    { label:"無垢材（オーク）",price:35000, thickness:30 },
   ];
 
-  const [matIdx,    setMatIdx]    = useState(0);
-  const [boardPrice,setBoardPrice]= useState(MATERIAL_PRESETS[0].price);
-  const [laborHours,setLaborHours]= useState(4);
-  const [hourlyRate,setHourlyRate]= useState(4000);
-  const [profitRate, setProfitRate]= useState(20);
+  const [matIdx,     setMatIdx]     = useState(0);
+  const [boardPrice, setBoardPrice] = useState(MATERIAL_PRESETS[0].price);
+  const [laborHours, setLaborHours] = useState(4);
+  const [hourlyRate, setHourlyRate] = useState(4000);
+  const [profitRate, setProfitRate] = useState(20);
 
   if (!data?.components?.length) return <div style={{padding:40,textAlign:"center",color:C.sub}}>図面データがありません</div>;
 
-  // 板材面積計算（扉・棚・側板など全部品）
-  const boardArea = BOARD_W * BOARD_D / 1e6; // 1枚あたりm²
-  const parts = data.components.map(c => {
+  const t = MATERIAL_PRESETS[matIdx].thickness;
+
+  // ── カットリスト生成 ──
+  // 各部品の「カット寸法」を求める
+  // 正面向き板（天板・底板・背板・扉）→ W×D or W×H
+  // 側面向き板（左右側板）→ D×H
+  const cutList = data.components.map(c => {
     const W = +c.width||0, H = +c.height||0, D = +c.depth||0;
-    // 正面向きの面積（W×H）または平面向き（W×D）の大きい方
-    const area = (W * Math.max(H, D)) / 1e6;
-    return { name: c.part_name, W, H, D, area, qty: +c.quantity||1 };
+    const name = c.part_name || "";
+    const qty = +c.quantity||1;
+
+    let cutW, cutH;
+    // 側板：幅が薄い（板厚相当）→ 奥行き×高さ
+    if (W <= t*2 && D > 0 && H > 0) {
+      cutW = D; cutH = H;
+    }
+    // 背板：奥行きが薄い → 幅×高さ
+    else if (D <= t*2 && W > 0 && H > 0) {
+      cutW = W; cutH = H;
+    }
+    // 天板・底板・棚板：高さが薄い → 幅×奥行き
+    else if (H <= t*2 && W > 0 && D > 0) {
+      cutW = W; cutH = D;
+    }
+    // 扉・その他：幅×高さ（前面パネル）
+    else {
+      cutW = W > D ? W : D;
+      cutH = H;
+    }
+    const area = (cutW * cutH) / 1e6;
+    return { name, cutW, cutH, area, qty };
   });
-  const totalArea   = parts.reduce((s,p) => s + p.area * p.qty, 0);
+
+  const boardArea   = BOARD_W * BOARD_H / 1e6;
+  const totalArea   = cutList.reduce((s,p) => s + p.area * p.qty, 0);
   const adjustedArea= totalArea / YIELD;
   const boardsNeeded= Math.ceil(adjustedArea / boardArea);
   const materialCost= boardsNeeded * boardPrice;
-
-  // 工賃・見積
   const laborCost   = laborHours * hourlyRate;
   const subtotal    = materialCost + laborCost;
   const profit      = Math.round(subtotal * profitRate / 100);
@@ -956,17 +980,16 @@ function MaterialEngine({ data }) {
   };
 
   return (
-    <div style={{maxWidth:600}}>
+    <div style={{maxWidth:640}}>
       {/* 材料設定 */}
       <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>🪵 材料設定</div>
-
         <div style={{marginBottom:12}}>
           <div style={{fontSize:10,color:C.sub,marginBottom:6}}>材料タイプ</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {MATERIAL_PRESETS.map((m,i)=>(
               <button key={i} onClick={()=>{setMatIdx(i);setBoardPrice(m.price);}}
-                style={{padding:"5px 10px",borderRadius:5,fontSize:10,fontWeight:600,cursor:"pointer",border:"none",
+                style={{padding:"5px 10px",borderRadius:5,fontSize:10,fontWeight:600,cursor:"pointer",
                   background:matIdx===i?C.accent2+"44":"#21262d",
                   border:`1px solid ${matIdx===i?C.accent:C.border2}`,
                   color:matIdx===i?C.accent:C.sub}}>
@@ -975,12 +998,10 @@ function MaterialEngine({ data }) {
             ))}
           </div>
         </div>
-
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div>
             <div style={{fontSize:10,color:C.sub,marginBottom:4}}>3×6板 1枚の価格（円）</div>
-            <input type="number" style={inputStyle} value={boardPrice}
-              onChange={e=>setBoardPrice(+e.target.value)}/>
+            <input type="number" style={inputStyle} value={boardPrice} onChange={e=>setBoardPrice(+e.target.value)}/>
           </div>
           <div>
             <div style={{fontSize:10,color:C.sub,marginBottom:4}}>歩留まり（%）</div>
@@ -989,44 +1010,50 @@ function MaterialEngine({ data }) {
         </div>
       </div>
 
-      {/* 材料計算結果 */}
+      {/* カットリスト */}
       <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>📐 材料計算</div>
-        <div style={{fontSize:10,color:C.sub,marginBottom:10}}>部品一覧（面積）</div>
-        {parts.map((p,i)=>(
-          <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.border}`}}>
-            <span style={{fontSize:11,color:C.text}}>{p.name}</span>
-            <span style={{fontSize:11,fontFamily:MONO,color:C.sub}}>
-              {p.W}×{Math.max(p.H,p.D)}mm = <span style={{color:"#79c0ff"}}>{(p.area*p.qty).toFixed(3)}m²</span>
-            </span>
-          </div>
-        ))}
-        <div style={{marginTop:10}}>
-          {row("面積合計", `${totalArea.toFixed(3)} m²`)}
-          {row("歩留まり補正後", `${adjustedArea.toFixed(3)} m²`)}
-          {row(`3×6板 枚数`, `${boardsNeeded} 枚`)}
-          {row("材料費", `¥${materialCost.toLocaleString()}`, C.warn)}
+        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:4}}>🔪 カットリスト</div>
+        <div style={{fontSize:10,color:C.sub,marginBottom:12}}>職人がそのまま使えるカット寸法</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:"0 12px",alignItems:"center"}}>
+          {/* ヘッダー */}
+          <div style={{fontSize:9,color:C.sub,fontWeight:600,paddingBottom:6,borderBottom:`1px solid ${C.border2}`}}>部品名</div>
+          <div style={{fontSize:9,color:C.sub,fontWeight:600,paddingBottom:6,borderBottom:`1px solid ${C.border2}`,textAlign:"right"}}>カット寸法</div>
+          <div style={{fontSize:9,color:C.sub,fontWeight:600,paddingBottom:6,borderBottom:`1px solid ${C.border2}`,textAlign:"right"}}>面積</div>
+          {/* 部品リスト */}
+          {cutList.map((p,i)=><>
+            <div key={`n${i}`} style={{fontSize:12,color:C.text,padding:"6px 0",borderBottom:`1px solid ${C.border}`}}>
+              {p.name}{p.qty>1?` ×${p.qty}`:""}
+            </div>
+            <div key={`d${i}`} style={{fontSize:12,fontFamily:MONO,color:"#79c0ff",padding:"6px 0",borderBottom:`1px solid ${C.border}`,textAlign:"right"}}>
+              {p.cutW} × {p.cutH} mm
+            </div>
+            <div key={`a${i}`} style={{fontSize:11,fontFamily:MONO,color:C.sub,padding:"6px 0",borderBottom:`1px solid ${C.border}`,textAlign:"right"}}>
+              {(p.area*p.qty).toFixed(3)}m²
+            </div>
+          </>)}
+        </div>
+        <div style={{marginTop:12}}>
+          {row("面積合計",      `${totalArea.toFixed(3)} m²`)}
+          {row("歩留まり補正後",`${adjustedArea.toFixed(3)} m²`)}
+          {row("3×6板 枚数",   `${boardsNeeded} 枚`)}
+          {row("材料費",        `¥${materialCost.toLocaleString()}`, C.warn)}
         </div>
       </div>
 
-      {/* 工賃設定 */}
+      {/* 工賃 */}
       <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>⏱️ 工賃</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div>
             <div style={{fontSize:10,color:C.sub,marginBottom:4}}>作業時間（時間）</div>
-            <input type="number" style={inputStyle} value={laborHours}
-              onChange={e=>setLaborHours(+e.target.value)}/>
+            <input type="number" style={inputStyle} value={laborHours} onChange={e=>setLaborHours(+e.target.value)}/>
           </div>
           <div>
             <div style={{fontSize:10,color:C.sub,marginBottom:4}}>時給（円）</div>
-            <input type="number" style={inputStyle} value={hourlyRate}
-              onChange={e=>setHourlyRate(+e.target.value)}/>
+            <input type="number" style={inputStyle} value={hourlyRate} onChange={e=>setHourlyRate(+e.target.value)}/>
           </div>
         </div>
-        <div style={{marginTop:10}}>
-          {row("工賃", `¥${laborCost.toLocaleString()}`, C.ok)}
-        </div>
+        <div style={{marginTop:10}}>{row("工賃", `¥${laborCost.toLocaleString()}`, C.ok)}</div>
       </div>
 
       {/* 見積 */}
@@ -1037,8 +1064,7 @@ function MaterialEngine({ data }) {
         <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
           <span style={{fontSize:12,color:C.sub}}>利益率</span>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <input type="number" style={{...inputStyle,width:60}} value={profitRate}
-              onChange={e=>setProfitRate(+e.target.value)}/>
+            <input type="number" style={{...inputStyle,width:60}} value={profitRate} onChange={e=>setProfitRate(+e.target.value)}/>
             <span style={{color:C.sub,fontSize:12}}>%</span>
           </div>
         </div>
@@ -1051,6 +1077,8 @@ function MaterialEngine({ data }) {
     </div>
   );
 }
+
+
 // ══════════════════════════════════════════════════
 function EasyEditor({ data, onApply }) {
   const [d, setD] = useState(() => JSON.parse(JSON.stringify(data)));
