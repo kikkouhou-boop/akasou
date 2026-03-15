@@ -1678,22 +1678,87 @@ export default function App() {
               </div>
             ))}
 
-            {/* 扉・棚ボタン（Human-in-the-loop） */}
+            {/* 部品追加ボタン（Human-in-the-loop） */}
             <div style={{marginBottom:18}}>
-              <div style={{fontSize:10,color:C.sub,marginBottom:8}}>構造の確認（タップで切替）</div>
+              <div style={{fontSize:10,color:C.sub,marginBottom:8}}>部品の追加・削除</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {[
-                  ["扉あり", ()=>confirmDims.components?.some(c=>c.part_name?.includes("扉"))],
-                  ["棚あり", ()=>confirmDims.components?.some(c=>c.part_name?.includes("棚"))],
-                ].map(([label, check]) => {
-                  const active = check();
+                  {
+                    label:"扉",
+                    check: d => d.components?.some(c=>c.part_name?.includes("扉")),
+                    add: d => {
+                      const W = d.overall_dimensions?.width || 800;
+                      const H = d.overall_dimensions?.height || 600;
+                      const D = d.overall_dimensions?.depth || 450;
+                      const t = 20;
+                      return {
+                        ...d,
+                        components: [...(d.components||[]), {
+                          part_name:"扉", shape:"rect",
+                          width: W-t*2, height: H-t*2, depth: t,
+                          panel_thickness: t,
+                          position:{x:t, y:t, z:0},
+                          material:"", grain_direction:"縦目", quantity:1, joint_method:"蝶番", notes:""
+                        }]
+                      };
+                    },
+                    remove: d => ({...d, components: d.components?.filter(c=>!c.part_name?.includes("扉"))})
+                  },
+                  {
+                    label:"引き出し",
+                    check: d => d.components?.some(c=>c.part_name?.includes("引き出し")),
+                    add: d => {
+                      const W = d.overall_dimensions?.width || 800;
+                      const H = d.overall_dimensions?.height || 600;
+                      const D = d.overall_dimensions?.depth || 450;
+                      const t = 20;
+                      return {
+                        ...d,
+                        components: [...(d.components||[]), {
+                          part_name:"引き出し", shape:"rect",
+                          width: W-t*2, height: Math.round(H/3)-t, depth: D-t,
+                          panel_thickness: t,
+                          position:{x:t, y:t, z:0},
+                          material:"", grain_direction:"横目", quantity:1, joint_method:"スライドレール", notes:""
+                        }]
+                      };
+                    },
+                    remove: d => ({...d, components: d.components?.filter(c=>!c.part_name?.includes("引き出し"))})
+                  },
+                  {
+                    label:"棚",
+                    check: d => d.components?.some(c=>c.part_name?.includes("棚")),
+                    add: d => {
+                      const W = d.overall_dimensions?.width || 800;
+                      const H = d.overall_dimensions?.height || 600;
+                      const D = d.overall_dimensions?.depth || 450;
+                      const t = 20;
+                      return {
+                        ...d,
+                        components: [...(d.components||[]), {
+                          part_name:"棚板", shape:"rect",
+                          width: W-t*2, height: t, depth: D-t,
+                          panel_thickness: t,
+                          position:{x:t, y:Math.round(H/2), z:t},
+                          material:"", grain_direction:"横目", quantity:1, joint_method:"棚ダボ", notes:""
+                        }]
+                      };
+                    },
+                    remove: d => ({...d, components: d.components?.filter(c=>!c.part_name?.includes("棚"))})
+                  },
+                ].map(({label, check, add, remove}) => {
+                  const active = check(confirmDims);
                   return (
-                    <div key={label} style={{
-                      padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",
-                      background: active ? C.ok+"33" : "#21262d",
-                      border: `1px solid ${active ? C.ok : C.border2}`,
-                      color: active ? C.ok : C.sub,
-                    }}>{active ? "✓ " : ""}{label}</div>
+                    <button key={label}
+                      onClick={() => setConfirmDims(active ? remove(confirmDims) : add(confirmDims))}
+                      style={{
+                        padding:"7px 14px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer", border:"none",
+                        background: active ? C.ok+"33" : C.accent2+"33",
+                        border: `1px solid ${active ? C.ok : C.accent}`,
+                        color: active ? C.ok : C.accent,
+                      }}>
+                      {active ? `✓ ${label}あり` : `＋ ${label}を追加`}
+                    </button>
                   );
                 })}
               </div>
