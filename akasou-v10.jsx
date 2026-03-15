@@ -901,7 +901,156 @@ function BOM({ data }) {
 }
 
 // ══════════════════════════════════════════════════
-// かんたん編集（アナログ対応フォームUI）
+// Material Engine v1 ── 材料費・工賃・見積
+// ══════════════════════════════════════════════════
+function MaterialEngine({ data }) {
+  const BOARD_W = 1820, BOARD_D = 910; // 3×6板（mm）
+  const YIELD = 0.7; // 歩留まり70%
+
+  const MATERIAL_PRESETS = [
+    { label:"ポリ合板 18mm",  price:5000 },
+    { label:"シナ合板 18mm",  price:7000 },
+    { label:"メラミン 18mm",  price:9000 },
+    { label:"無垢材（杉）",   price:15000 },
+    { label:"無垢材（オーク）",price:35000 },
+  ];
+
+  const [matIdx,    setMatIdx]    = useState(0);
+  const [boardPrice,setBoardPrice]= useState(MATERIAL_PRESETS[0].price);
+  const [laborHours,setLaborHours]= useState(4);
+  const [hourlyRate,setHourlyRate]= useState(4000);
+  const [profitRate, setProfitRate]= useState(20);
+
+  if (!data?.components?.length) return <div style={{padding:40,textAlign:"center",color:C.sub}}>図面データがありません</div>;
+
+  // 板材面積計算（扉・棚・側板など全部品）
+  const boardArea = BOARD_W * BOARD_D / 1e6; // 1枚あたりm²
+  const parts = data.components.map(c => {
+    const W = +c.width||0, H = +c.height||0, D = +c.depth||0;
+    // 正面向きの面積（W×H）または平面向き（W×D）の大きい方
+    const area = (W * Math.max(H, D)) / 1e6;
+    return { name: c.part_name, W, H, D, area, qty: +c.quantity||1 };
+  });
+  const totalArea   = parts.reduce((s,p) => s + p.area * p.qty, 0);
+  const adjustedArea= totalArea / YIELD;
+  const boardsNeeded= Math.ceil(adjustedArea / boardArea);
+  const materialCost= boardsNeeded * boardPrice;
+
+  // 工賃・見積
+  const laborCost   = laborHours * hourlyRate;
+  const subtotal    = materialCost + laborCost;
+  const profit      = Math.round(subtotal * profitRate / 100);
+  const total       = subtotal + profit;
+
+  const row = (label, val, col=C.text) => (
+    <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+      <span style={{fontSize:12,color:C.sub}}>{label}</span>
+      <span style={{fontSize:13,fontWeight:700,fontFamily:MONO,color:col}}>{val}</span>
+    </div>
+  );
+
+  const inputStyle = {
+    background:"#0d1117", border:`1px solid ${C.border2}`, borderRadius:5,
+    color:"#79c0ff", fontSize:13, fontFamily:MONO, textAlign:"right",
+    padding:"6px 10px", outline:"none", width:"100px"
+  };
+
+  return (
+    <div style={{maxWidth:600}}>
+      {/* 材料設定 */}
+      <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>🪵 材料設定</div>
+
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:10,color:C.sub,marginBottom:6}}>材料タイプ</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {MATERIAL_PRESETS.map((m,i)=>(
+              <button key={i} onClick={()=>{setMatIdx(i);setBoardPrice(m.price);}}
+                style={{padding:"5px 10px",borderRadius:5,fontSize:10,fontWeight:600,cursor:"pointer",border:"none",
+                  background:matIdx===i?C.accent2+"44":"#21262d",
+                  border:`1px solid ${matIdx===i?C.accent:C.border2}`,
+                  color:matIdx===i?C.accent:C.sub}}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div>
+            <div style={{fontSize:10,color:C.sub,marginBottom:4}}>3×6板 1枚の価格（円）</div>
+            <input type="number" style={inputStyle} value={boardPrice}
+              onChange={e=>setBoardPrice(+e.target.value)}/>
+          </div>
+          <div>
+            <div style={{fontSize:10,color:C.sub,marginBottom:4}}>歩留まり（%）</div>
+            <input type="number" style={{...inputStyle,color:C.sub}} value={Math.round(YIELD*100)} readOnly/>
+          </div>
+        </div>
+      </div>
+
+      {/* 材料計算結果 */}
+      <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>📐 材料計算</div>
+        <div style={{fontSize:10,color:C.sub,marginBottom:10}}>部品一覧（面積）</div>
+        {parts.map((p,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.border}`}}>
+            <span style={{fontSize:11,color:C.text}}>{p.name}</span>
+            <span style={{fontSize:11,fontFamily:MONO,color:C.sub}}>
+              {p.W}×{Math.max(p.H,p.D)}mm = <span style={{color:"#79c0ff"}}>{(p.area*p.qty).toFixed(3)}m²</span>
+            </span>
+          </div>
+        ))}
+        <div style={{marginTop:10}}>
+          {row("面積合計", `${totalArea.toFixed(3)} m²`)}
+          {row("歩留まり補正後", `${adjustedArea.toFixed(3)} m²`)}
+          {row(`3×6板 枚数`, `${boardsNeeded} 枚`)}
+          {row("材料費", `¥${materialCost.toLocaleString()}`, C.warn)}
+        </div>
+      </div>
+
+      {/* 工賃設定 */}
+      <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>⏱️ 工賃</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div>
+            <div style={{fontSize:10,color:C.sub,marginBottom:4}}>作業時間（時間）</div>
+            <input type="number" style={inputStyle} value={laborHours}
+              onChange={e=>setLaborHours(+e.target.value)}/>
+          </div>
+          <div>
+            <div style={{fontSize:10,color:C.sub,marginBottom:4}}>時給（円）</div>
+            <input type="number" style={inputStyle} value={hourlyRate}
+              onChange={e=>setHourlyRate(+e.target.value)}/>
+          </div>
+        </div>
+        <div style={{marginTop:10}}>
+          {row("工賃", `¥${laborCost.toLocaleString()}`, C.ok)}
+        </div>
+      </div>
+
+      {/* 見積 */}
+      <div style={{background:"#0d1117",border:`2px solid ${C.accent}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>💴 見積</div>
+        {row("材料費", `¥${materialCost.toLocaleString()}`)}
+        {row("工賃",   `¥${laborCost.toLocaleString()}`)}
+        <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+          <span style={{fontSize:12,color:C.sub}}>利益率</span>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <input type="number" style={{...inputStyle,width:60}} value={profitRate}
+              onChange={e=>setProfitRate(+e.target.value)}/>
+            <span style={{color:C.sub,fontSize:12}}>%</span>
+          </div>
+        </div>
+        {row("利益", `¥${profit.toLocaleString()}`)}
+        <div style={{display:"flex",justifyContent:"space-between",padding:"12px 0",marginTop:4}}>
+          <span style={{fontSize:15,fontWeight:800,color:C.text}}>見積合計</span>
+          <span style={{fontSize:22,fontWeight:900,fontFamily:MONO,color:C.accent}}>¥{total.toLocaleString()}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ══════════════════════════════════════════════════
 function EasyEditor({ data, onApply }) {
   const [d, setD] = useState(() => JSON.parse(JSON.stringify(data)));
@@ -1454,11 +1603,12 @@ export default function App() {
   };
 
   const TABS = [
-    { key:"2d",    label:"2D図面（JIS）" },
-    { key:"3d",    label:"3Dモデル" },
-    { key:"bom",   label:"部品表" },
-    { key:"edit",  label:"✏️ かんたん編集" },
-    { key:"json",  label:"JSON（上級者向け）" },
+    { key:"2d",       label:"2D図面（JIS）" },
+    { key:"3d",       label:"3Dモデル" },
+    { key:"bom",      label:"部品表" },
+    { key:"estimate", label:"💴 見積" },
+    { key:"edit",     label:"✏️ かんたん編集" },
+    { key:"json",     label:"JSON（上級者向け）" },
   ];
 
   const od = data?.overall_dimensions || {};
@@ -1600,6 +1750,8 @@ export default function App() {
               )}
 
               {tab==="bom" && <BOM data={data}/>}
+
+              {tab==="estimate" && <MaterialEngine data={data}/>}
 
               {tab==="edit" && (
                 <EasyEditor data={data} onApply={edited => {
