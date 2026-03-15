@@ -159,25 +159,31 @@ function makeProjector(OW, OH, OD, areaW, areaH, margin=0.82) {
 }
 
 // 1部品のSVG描画（正面図）
-function CompFront({ comp, ox,oy, sc, totalH }) {
+// pass="fill"  → 塗りのみ描画（輪郭線なし）
+// pass="stroke"→ 輪郭線のみ描画（塗りなし）
+function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   const { shape="rect", width:W=0, height:H=0, depth:D=0,
     position:pos={}, grain_direction, arc_radius, arc_start_deg, arc_end_deg,
-    is_hidden } = comp;
+    is_hidden, part_name="" } = comp;
   const px = (pos.x||0)*sc + ox;
   const py = oy + (totalH - (pos.y||0) - H)*sc;
   const w = W*sc, h = H*sc;
 
-  const fill = is_hidden ? "none" : "#e0d8c8";
-  const stroke = "#333";
-  const sw = is_hidden ? 0 : 0.8;
-  const dashArray = is_hidden ? "4,2" : undefined;
+  if (is_hidden) return null;
+
+  const isDoor   = (part_name||"").includes("扉") || (part_name||"").includes("ドア");
+  const isDrawer = (part_name||"").includes("引き出し") || (part_name||"").includes("ドロワー");
+
+  const fill   = pass==="fill"   ? (isDoor?"#d0c9b8" : isDrawer?"#cdd4c0" : "#e0d8c8") : "none";
+  const stroke = pass==="stroke" ? "#333" : "none";
+  const sw     = pass==="stroke" ? 0.8 : 0;
 
   if (shape==="cylinder") {
     const r = (W/2)*sc;
     return <g>
-      <ellipse cx={px+r} cy={py+h} rx={r} ry={r*0.3} fill="#d8d0c0" stroke={stroke} strokeWidth={sw}/>
+      <ellipse cx={px+r} cy={py+h} rx={r} ry={r*0.3} fill={fill} stroke={stroke} strokeWidth={sw}/>
       <rect x={px} y={py} width={w} height={h} fill={fill} stroke={stroke} strokeWidth={sw}/>
-      <ellipse cx={px+r} cy={py} rx={r} ry={r*0.3} fill="#e8e0d0" stroke={stroke} strokeWidth={sw}/>
+      <ellipse cx={px+r} cy={py} rx={r} ry={r*0.3} fill={fill} stroke={stroke} strokeWidth={sw}/>
     </g>;
   }
   if (shape==="arc_panel" && arc_radius) {
@@ -185,32 +191,41 @@ function CompFront({ comp, ox,oy, sc, totalH }) {
     const sa = arc_start_deg||180, ea = arc_end_deg||360;
     const cxA = px + w/2, cyA = py;
     return <g>
-      <path d={arcPath(cxA,cyA,R,sa,ea)} fill="none" stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
+      <path d={arcPath(cxA,cyA,R,sa,ea)} fill="none" stroke={stroke} strokeWidth={sw}/>
       <path d={arcPath(cxA,cyA,R-h,sa,ea)} fill="none" stroke={stroke} strokeWidth={sw*0.7} strokeDasharray="3,2"/>
     </g>;
   }
   return <g>
-    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
-    {!is_hidden && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
+    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    {/* 扉：対角線2本（JIS製図の扉表現） */}
+    {isDoor && pass==="stroke" && <>
+      <line x1={px+2} y1={py+2} x2={px+w-2} y2={py+h-2} stroke="#666" strokeWidth={0.6}/>
+      <line x1={px+w-2} y1={py+2} x2={px+2} y2={py+h-2} stroke="#666" strokeWidth={0.6}/>
+    </>}
+    {/* 引き出し：水平線3本 */}
+    {isDrawer && pass==="stroke" && [0.3,0.5,0.7].map((r,i)=>
+      <line key={i} x1={px+4} y1={py+h*r} x2={px+w-4} y2={py+h*r} stroke="#666" strokeWidth={0.5}/>
+    )}
+    {pass==="fill" && !isDoor && !isDrawer && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
-}
-
-// 1部品のSVG描画（側面図）
-function CompSide({ comp, ox,oy, sc, totalH }) {
+// pass="fill"  → 塗りのみ
+// pass="stroke"→ 輪郭線のみ
+function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
   const { shape="rect", width:W=0, height:H=0, depth:D=0,
     position:pos={}, grain_direction, arc_radius, arc_start_deg, arc_end_deg, is_hidden } = comp;
   const px = (pos.z||0)*sc + ox;
   const py = oy + (totalH - (pos.y||0) - H)*sc;
   const w = D*sc, h = H*sc;
-  const fill = is_hidden ? "none" : "#d8d0c0";
-  const stroke = "#333";
-  const sw = is_hidden ? 0 : 0.8;
-  const dashArray = is_hidden ? "4,2" : undefined;
+
+  if (is_hidden) return null;
+
+  const fill   = pass==="fill"   ? "#d8d0c0" : "none";
+  const stroke = pass==="stroke" ? "#333"    : "none";
+  const sw = pass==="stroke" ? 0.8 : 0;
 
   if (shape==="cylinder") {
-    const r = (W/2)*sc;
     return <g>
-      <ellipse cx={px+w/2} cy={py+h} rx={w/2} ry={w*0.15} fill="#d0c8b8" stroke={stroke} strokeWidth={sw}/>
+      <ellipse cx={px+w/2} cy={py+h} rx={w/2} ry={w*0.15} fill={fill} stroke={stroke} strokeWidth={sw}/>
       <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     </g>;
   }
@@ -220,26 +235,30 @@ function CompSide({ comp, ox,oy, sc, totalH }) {
     </g>;
   }
   return <g>
-    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
-    {!is_hidden && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
+    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
 
 // 1部品のSVG描画（平面図）
-function CompTop({ comp, ox,oy, sc, totalD }) {
+// pass="fill"  → 塗りのみ
+// pass="stroke"→ 輪郭線のみ
+function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
   const { shape="rect", width:W=0, height:H=0, depth:D=0,
     position:pos={}, grain_direction, arc_radius, arc_start_deg, arc_end_deg, is_hidden } = comp;
   const px = (pos.x||0)*sc + ox;
   const py = (pos.z||0)*sc + oy;
   const w = W*sc, d = D*sc;
-  const fill = is_hidden ? "none" : "#e8e0d0";
-  const stroke = "#333";
-  const sw = is_hidden ? 0 : 0.8;
-  const dashArray = is_hidden ? "4,2" : undefined;
+
+  if (is_hidden) return null;
+
+  const fill   = pass==="fill"   ? "#e8e0d0" : "none";
+  const stroke = pass==="stroke" ? "#333"    : "none";
+  const sw = pass==="stroke" ? 0.8 : 0;
 
   if (shape==="cylinder") {
     const r=(W/2)*sc;
-    return <ellipse cx={px+r} cy={py+r} rx={r} ry={r} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>;
+    return <ellipse cx={px+r} cy={py+r} rx={r} ry={r} fill={fill} stroke={stroke} strokeWidth={sw}/>;
   }
   if (shape==="arc_panel" && arc_radius) {
     const R=arc_radius*sc, sa=arc_start_deg||180, ea=arc_end_deg||360;
@@ -249,8 +268,8 @@ function CompTop({ comp, ox,oy, sc, totalD }) {
     </g>;
   }
   return <g>
-    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(d,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
-    {!is_hidden && grain_direction && <Grain x={px} y={py} w={w} h={d} dir={grain_direction==="縦目"?"v":"h"}/>}
+    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(d,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={d} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
 
@@ -338,7 +357,9 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
           ・OW（幅）：正面図上のみ
           ・OH（高さ）：正面図右のみ
       */}
-      {sortedComps.map((c,i)=><CompFront key={i} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH}/>)}
+      {/* ── 正面図：1パス=塗り、2パス=線（線が常に最前面） ── */}
+      {sortedComps.map((c,i)=><CompFront key={`ff${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="fill"/>)}
+      {sortedComps.map((c,i)=><CompFront key={`fs${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="stroke"/>)}
       <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
       {/* 中心線：縦（左右対称）のみ。横中心線は上下非対称なので引かない */}
       {(()=>{
@@ -359,19 +380,15 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
       {/* OH：正面図右のみ（側面図には出さない） */}
       <Dim ax={fOX+fW} ay={fOY} bx={fOX+fW} by={fOY+fH} val={OH} gap={44} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
-      {/* ── 平面図 ──
-          ・OW：正面図と重複するため削除
-          ・OD：平面図右側のみ
-      */}
-      {sortedComps.map((c,i)=><CompTop key={i} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD}/>)}
+      {/* ── 平面図：1パス=塗り、2パス=線 ── */}
+      {sortedComps.map((c,i)=><CompTop key={`tf${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="fill"/>)}
+      {sortedComps.map((c,i)=><CompTop key={`ts${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="stroke"/>)}
       <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
       <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
-      {/* ── 右側面図 ──
-          ・OD：側面図上部に追加（側面図を見たときに奥行きがわかるように）
-          ・OH：側面図右には出さない（正面図に統一）
-      */}
-      {sideSortedComps.map((c,i)=><CompSide key={i} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH}/>)}
+      {/* ── 右側面図：1パス=塗り、2パス=線 ── */}
+      {sideSortedComps.map((c,i)=><CompSide key={`sf${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="fill"/>)}
+      {sideSortedComps.map((c,i)=><CompSide key={`ss${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="stroke"/>)}
       <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
       <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
@@ -1396,7 +1413,7 @@ export default function App() {
         return (json.content||[]).find(b=>b.type==="text")?.text || "";
       };
 
-      // ── Step1：観察（BOX-first・アイソメ対応） ──
+      // ── Step1：観察（BOX-first・職人アイソメ対応） ──
       const observation = await call([{
         role: "user",
         content: [
@@ -1413,7 +1430,7 @@ export default function App() {
       }], 800);
 
       setLoadStep("図面データを生成中…");
-      // ── Step3：スキーマ生成（固定フォーマットでJSON出力） ──
+      // ── Step3：スキーマ生成（Woodwork Schema） ──
       const jsonText = await call([{
         role: "user",
         content: [{ type: "text", text: makePromptJSON(observation, structure) }]
@@ -1535,8 +1552,8 @@ export default function App() {
                   <div style={{fontSize:24,marginBottom:6}}>🖊️</div>
                   <div style={{fontSize:11,fontWeight:600,color:C.sub}}>スケッチをアップロード</div>
                   <div style={{fontSize:9,color:"#555",marginTop:3}}>JPEG / PNG / WebP</div>
-                  <div style={{fontSize:9,color:C.ok,marginTop:6,lineHeight:1.6}}>
-                    💡 精度UP<br/>品名と寸法を<br/>スケッチに書いてね
+                  <div style={{fontSize:9,color:C.ok,marginTop:6,lineHeight:1.7}}>
+                    💡 精度UP のコツ<br/>品名と寸法を書いてね
                   </div>
                 </div>
             }
