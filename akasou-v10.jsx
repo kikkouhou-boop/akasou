@@ -159,9 +159,7 @@ function makeProjector(OW, OH, OD, areaW, areaH, margin=0.82) {
 }
 
 // 1部品のSVG描画（正面図）
-// pass="fill"  → 塗りのみ描画（輪郭線なし）
-// pass="stroke"→ 輪郭線のみ描画（塗りなし）
-function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
+function CompFront({ comp, ox,oy, sc, totalH }) {
   const { shape="rect", width:W=0, height:H=0, depth:D=0,
     position:pos={}, grain_direction, arc_radius, arc_start_deg, arc_end_deg,
     is_hidden } = comp;
@@ -169,18 +167,17 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   const py = oy + (totalH - (pos.y||0) - H)*sc;
   const w = W*sc, h = H*sc;
 
-  if (is_hidden) return null;
-
-  const fill   = pass==="fill"   ? "#e0d8c8" : "none";
-  const stroke = pass==="stroke" ? "#333"    : "none";
-  const sw = pass==="stroke" ? 0.8 : 0;
+  const fill = is_hidden ? "none" : "#e0d8c8";
+  const stroke = "#333";
+  const sw = is_hidden ? 0 : 0.8;
+  const dashArray = is_hidden ? "4,2" : undefined;
 
   if (shape==="cylinder") {
     const r = (W/2)*sc;
     return <g>
-      <ellipse cx={px+r} cy={py+h} rx={r} ry={r*0.3} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <ellipse cx={px+r} cy={py+h} rx={r} ry={r*0.3} fill="#d8d0c0" stroke={stroke} strokeWidth={sw}/>
       <rect x={px} y={py} width={w} height={h} fill={fill} stroke={stroke} strokeWidth={sw}/>
-      <ellipse cx={px+r} cy={py} rx={r} ry={r*0.3} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <ellipse cx={px+r} cy={py} rx={r} ry={r*0.3} fill="#e8e0d0" stroke={stroke} strokeWidth={sw}/>
     </g>;
   }
   if (shape==="arc_panel" && arc_radius) {
@@ -188,35 +185,32 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
     const sa = arc_start_deg||180, ea = arc_end_deg||360;
     const cxA = px + w/2, cyA = py;
     return <g>
-      <path d={arcPath(cxA,cyA,R,sa,ea)} fill="none" stroke={stroke} strokeWidth={sw}/>
+      <path d={arcPath(cxA,cyA,R,sa,ea)} fill="none" stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
       <path d={arcPath(cxA,cyA,R-h,sa,ea)} fill="none" stroke={stroke} strokeWidth={sw*0.7} strokeDasharray="3,2"/>
     </g>;
   }
   return <g>
-    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
-    {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
+    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
+    {!is_hidden && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
 
 // 1部品のSVG描画（側面図）
-// pass="fill"  → 塗りのみ
-// pass="stroke"→ 輪郭線のみ
-function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
+function CompSide({ comp, ox,oy, sc, totalH }) {
   const { shape="rect", width:W=0, height:H=0, depth:D=0,
     position:pos={}, grain_direction, arc_radius, arc_start_deg, arc_end_deg, is_hidden } = comp;
   const px = (pos.z||0)*sc + ox;
   const py = oy + (totalH - (pos.y||0) - H)*sc;
   const w = D*sc, h = H*sc;
-
-  if (is_hidden) return null;
-
-  const fill   = pass==="fill"   ? "#d8d0c0" : "none";
-  const stroke = pass==="stroke" ? "#333"    : "none";
-  const sw = pass==="stroke" ? 0.8 : 0;
+  const fill = is_hidden ? "none" : "#d8d0c0";
+  const stroke = "#333";
+  const sw = is_hidden ? 0 : 0.8;
+  const dashArray = is_hidden ? "4,2" : undefined;
 
   if (shape==="cylinder") {
+    const r = (W/2)*sc;
     return <g>
-      <ellipse cx={px+w/2} cy={py+h} rx={w/2} ry={w*0.15} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <ellipse cx={px+w/2} cy={py+h} rx={w/2} ry={w*0.15} fill="#d0c8b8" stroke={stroke} strokeWidth={sw}/>
       <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     </g>;
   }
@@ -226,30 +220,26 @@ function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
     </g>;
   }
   return <g>
-    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
-    {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
+    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
+    {!is_hidden && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
 
 // 1部品のSVG描画（平面図）
-// pass="fill"  → 塗りのみ
-// pass="stroke"→ 輪郭線のみ
-function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
+function CompTop({ comp, ox,oy, sc, totalD }) {
   const { shape="rect", width:W=0, height:H=0, depth:D=0,
     position:pos={}, grain_direction, arc_radius, arc_start_deg, arc_end_deg, is_hidden } = comp;
   const px = (pos.x||0)*sc + ox;
   const py = (pos.z||0)*sc + oy;
   const w = W*sc, d = D*sc;
-
-  if (is_hidden) return null;
-
-  const fill   = pass==="fill"   ? "#e8e0d0" : "none";
-  const stroke = pass==="stroke" ? "#333"    : "none";
-  const sw = pass==="stroke" ? 0.8 : 0;
+  const fill = is_hidden ? "none" : "#e8e0d0";
+  const stroke = "#333";
+  const sw = is_hidden ? 0 : 0.8;
+  const dashArray = is_hidden ? "4,2" : undefined;
 
   if (shape==="cylinder") {
     const r=(W/2)*sc;
-    return <ellipse cx={px+r} cy={py+r} rx={r} ry={r} fill={fill} stroke={stroke} strokeWidth={sw}/>;
+    return <ellipse cx={px+r} cy={py+r} rx={r} ry={r} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>;
   }
   if (shape==="arc_panel" && arc_radius) {
     const R=arc_radius*sc, sa=arc_start_deg||180, ea=arc_end_deg||360;
@@ -259,8 +249,8 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
     </g>;
   }
   return <g>
-    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(d,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
-    {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={d} dir={grain_direction==="縦目"?"v":"h"}/>}
+    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(d,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray={dashArray}/>
+    {!is_hidden && grain_direction && <Grain x={px} y={py} w={w} h={d} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
 
@@ -348,9 +338,7 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
           ・OW（幅）：正面図上のみ
           ・OH（高さ）：正面図右のみ
       */}
-      {/* ── 正面図：1パス=塗り、2パス=線（線が常に最前面） ── */}
-      {sortedComps.map((c,i)=><CompFront key={`ff${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="fill"/>)}
-      {sortedComps.map((c,i)=><CompFront key={`fs${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="stroke"/>)}
+      {sortedComps.map((c,i)=><CompFront key={i} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH}/>)}
       <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
       {/* 中心線：縦（左右対称）のみ。横中心線は上下非対称なので引かない */}
       {(()=>{
@@ -371,15 +359,19 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
       {/* OH：正面図右のみ（側面図には出さない） */}
       <Dim ax={fOX+fW} ay={fOY} bx={fOX+fW} by={fOY+fH} val={OH} gap={44} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
-      {/* ── 平面図：1パス=塗り、2パス=線 ── */}
-      {sortedComps.map((c,i)=><CompTop key={`tf${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="fill"/>)}
-      {sortedComps.map((c,i)=><CompTop key={`ts${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="stroke"/>)}
+      {/* ── 平面図 ──
+          ・OW：正面図と重複するため削除
+          ・OD：平面図右側のみ
+      */}
+      {sortedComps.map((c,i)=><CompTop key={i} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD}/>)}
       <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
       <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
-      {/* ── 右側面図：1パス=塗り、2パス=線 ── */}
-      {sideSortedComps.map((c,i)=><CompSide key={`sf${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="fill"/>)}
-      {sideSortedComps.map((c,i)=><CompSide key={`ss${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="stroke"/>)}
+      {/* ── 右側面図 ──
+          ・OD：側面図上部に追加（側面図を見たときに奥行きがわかるように）
+          ・OH：側面図右には出さない（正面図に統一）
+      */}
+      {sideSortedComps.map((c,i)=><CompSide key={i} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH}/>)}
       <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
       <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
@@ -1150,82 +1142,146 @@ function EasyEditor({ data, onApply }) {
 }
 
 
-// ステップ1：画像観察プロンプト
-const PROMPT_OBSERVE = `この画像に描かれている家具・造作物を観察して、以下の項目を具体的に答えてください。
+// ══════════════════════════════════════════════════
+// Sketch Engine v1 ── 3ステップ Chain-of-Thought
+// Step1: 観察（何が見えるか）
+// Step2: 構造理解（部品辞書で意味を分類）
+// Step3: スキーマ生成（固定フォーマットでJSON出力）
+// ══════════════════════════════════════════════════
 
-【最優先：寸法数値の読み取り】
-画像に数字や寸法（例：W1400、H720、60角、t30など）が書かれていれば、必ずすべて読み取って報告してください。
-手書きの数字でも読める限り読んでください。これらは後の図面生成で最優先で使用します。
+// 部品辞書（英語キー・日本語エイリアス）
+const PART_DICT = {
+  top:    { ja: ["天板","上板","トップ板"],         en: "top" },
+  bottom: { ja: ["底板","下板"],                   en: "bottom" },
+  side:   { ja: ["側板","側面","サイド板"],         en: "side" },
+  back:   { ja: ["背板","後板","バック板"],         en: "back" },
+  shelf:  { ja: ["棚板","中棚","棚"],               en: "shelf" },
+  leg:    { ja: ["脚","足","レッグ"],               en: "leg" },
+  apron:  { ja: ["幕板","アポン","幕"],             en: "apron" },
+  door:   { ja: ["扉","ドア","引き戸","開き戸"],   en: "door" },
+  drawer: { ja: ["引き出し","ドロワー"],            en: "drawer" },
+  frame:  { ja: ["枠","框","フレーム"],             en: "frame" },
+};
 
-【必須項目】
-1. 家具の種類（テーブル／棚／椅子／カウンター／建具 など）
-2. 脚の本数と断面形状（※重要：角材か丸脚かを必ず明記。角が見えたら「角材」、円形なら「丸脚」）
-3. 天板・棚板・座面の枚数と厚み
-4. 幕板（天板と脚をつなぐ横板）の有無
-5. 全体の幅：高さ：奥行きの比率（例：幅が高さの2倍、奥行きは幅の半分）
-6. 曲線・円弧・R加工などの有無と場所
-7. 棚がある場合、段数と間隔
+// Step1：観察プロンプト（BOX-first・職人アイソメ対応）
+const PROMPT_OBSERVE = `このスケッチ画像を観察してください。職人が描いたアイソメ図（立体スケッチ）の場合があります。
 
-画像に見えるものだけ答えてください。見えないものは「不明」と書いてください。`;
+【観察の順番】
+1. まず「全体の外形（箱の形）」を把握してください
+2. 次に「内部の構造（棚・扉・仕切り）」を把握してください
+3. 最後に「寸法の数字」を全て読み取ってください
 
-// ステップ2：JSON変換プロンプト（観察結果を渡す）
-const makePromptJSON = (observation) => {
-  return `以下の観察記録から家具のJSONを生成してください。JSONのみ返答（前後に説明文不要）。
+【必須：以下を全て答えてください】
+
+A. タイトル・品名
+   画像に書かれた文字（「収納BOXの図面」など）を全て読み取る
+
+B. 外形BOX
+   全体の形（箱型・L字・etc）、おおよその縦横比
+
+C. 主要寸法（※最重要）
+   画像に書かれた数字を全て読み取る
+   例：800, 450, 600, t20, H1200 など
+   手書きでも読める限り読む
+
+D. 内部構造
+   棚の有無と枚数、扉の有無、引き出しの有無、仕切りの有無
+
+E. 脚の有無
+   脚がある場合：本数・角材か丸脚か・おおよそのサイズ
+
+F. 素材・仕上げの記載
+   画像に書いてあれば読み取る
+
+G. スケッチの種類
+   アイソメ（立体）か正面図か、方眼紙かどうか
+
+見えないものは「不明」と書いてください。`;
+
+// Step2：構造理解プロンプト（部品辞書で意味分類）
+const makePromptStructure = (observation) => `以下の観察記録を読んで、家具の構造を部品として分類してください。
 
 【観察記録】
 ${observation}
 
+【部品辞書】（必ずこの分類を使うこと）
+- top（天板・上板）
+- bottom（底板・下板）
+- side（側板・側面）
+- back（背板）
+- shelf（棚板）
+- leg（脚）
+- apron（幕板）
+- door（扉）
+- drawer（引き出し）
+- frame（枠・框）
+
+【回答形式】
+以下の形式で答えてください（JSON不要・箇条書きで）：
+
+家具タイプ: （テーブル／収納ボックス／棚／椅子 など）
+外形寸法: W=? H=? D=?（観察から読み取った数値、不明は推定）
+確認できた部品:
+- top: あり/なし、寸法=
+- bottom: あり/なし
+- side: あり/なし、枚数=
+- shelf: あり/なし、枚数=
+- leg: あり/なし、本数=、サイズ=
+- apron: あり/なし
+- door: あり/なし
+- drawer: あり/なし
+
+不明な部品は「不明」と書いてください。`;
+
+// Step3：スキーマ生成プロンプト（固定フォーマットでJSON出力）
+const makePromptJSON = (observation, structure) => `以下の観察記録と構造分析からJSONを生成してください。JSONのみ返答（前後に説明文不要）。
+
+【観察記録】
+${observation}
+
+【構造分析】
+${structure}
+
 【座標ルール】※最重要
 - 原点(0,0,0) = 家具の左・下・手前の角
-- x軸 = 右方向（幅）、y軸 = 上方向（高さ）、z軸 = 奥方向（奥行き）
-- position は各部品の「左下手前の角」の座標
+- x軸=右方向（幅）、y軸=上方向（高さ）、z軸=奥方向（奥行き）
+- positionは各部品の「左下手前の角」の座標
 
-【テーブルのお手本JSON】※脚の寸法は必ずこの形式に従うこと
+【テーブルのお手本】
 W=1400, H=720, D=840, 脚60角の場合：
-  前脚左:  {width:60, height:680, depth:60, position:{x:60,  y:0, z:60}}
+  前脚左:  {width:60, height:680, depth:60, position:{x:60,   y:0, z:60}}
   前脚右:  {width:60, height:680, depth:60, position:{x:1280, y:0, z:60}}
-  後脚左:  {width:60, height:680, depth:60, position:{x:60,  y:0, z:720}}
+  後脚左:  {width:60, height:680, depth:60, position:{x:60,   y:0, z:720}}
   後脚右:  {width:60, height:680, depth:60, position:{x:1280, y:0, z:720}}
   天板:    {width:1400, height:40, depth:840, position:{x:0, y:680, z:0}}
   幕板前:  {width:1280, height:80, depth:30, position:{x:60, y:600, z:60}}
   幕板後:  {width:1280, height:80, depth:30, position:{x:60, y:600, z:750}}
   幕板左:  {width:30, height:80, depth:600, position:{x:60, y:600, z:90}}
-  幕板右:  {width:30, height:80, depth:600, position:{x:1310, y:600, z:90}}
-★脚のwidthとdepthは必ず同じ値（正方形断面）にすること
-- 脚は必ず1本ずつ独立したcomponentとして記述する（まとめてはいけない）
-- 脚4本の場合：前脚左(x=内側オフセット, z=内側オフセット)、前脚右(x=W-脚幅-オフセット, z=内側オフセット)、後脚左(x=内側オフセット, z=D-脚幅-オフセット)、後脚右(x=W-脚幅-オフセット, z=D-脚幅-オフセット)
-- 天板はy=全高さ-天板厚、幕板は脚の上端付近に配置
-- ★幕板の位置ルール（必須）：
-  - 長手前幕板：z = 脚の厚み（例：z:60）、奥行きは板厚のみ（depth:30程度）
-  - 長手後幕板：z = 全奥行き - 脚の厚み - 板厚（例：z:D-90）
-  - 短手幕板：x = 脚の厚み、width = 板厚のみ
-  - 幕板がz=0やx=0から始まると家具の外に飛び出すので絶対に禁止
-- ★角材の脚は width と depth を必ず同じ値にすること（例：width:60, depth:60）。異なる値にしてはいけない
+  幕板右:  {width:30, height:80, depth:600, position:{x:1310,y:600, z:90}}
 
-【棚・キャビネットの場合】
-- 側板2枚、天板、底板、各棚板を個別に記述する
+【収納ボックスのお手本】
+W=980, H=600, D=450, 板厚20の場合：
+  天板:   {width:980, height:20, depth:450, position:{x:0,  y:580, z:0}}
+  底板:   {width:980, height:20, depth:450, position:{x:0,  y:0,   z:0}}
+  左側板: {width:20,  height:600,depth:450, position:{x:0,  y:0,   z:0}}
+  右側板: {width:20,  height:600,depth:450, position:{x:960,y:0,   z:0}}
+  背板:   {width:940, height:560,depth:20,  position:{x:20, y:20,  z:430}}
 
-【サイズの目安】
-テーブル：W1200-1800, H700-750, D800-900
-椅子：W450, H800(座面H430), D450
-棚：W900, H1800, D350
-カウンター：W1800, H900, D600
-
-【shapeの選択ルール】※絶対に守ること
-- 脚・角材・板材・天板・幕板など → shape: "rect"（デフォルト）
-- 明らかに円形断面の丸脚のみ → shape: "cylinder"
-- ★観察結果に「角材」「四角」「直角」が含まれていたら必ず "rect"
-- ★迷ったら必ず "rect" を使うこと。cylinderは丸脚と明記された場合だけ
+【ルール】
+- 脚のwidthとdepthは必ず同じ値（正方形断面）
+- 脚は1本ずつ独立したcomponentとして記述
+- 角材の脚はshape:"rect"、丸脚はshape:"cylinder"
+- 迷ったらshape:"rect"
 
 出力形式：
 {
   "furniture_name": "名称",
-  "material": "材種",
-  "finish": "仕上げ",
+  "material": "材種（不明なら空欄）",
+  "finish": "仕上げ（不明なら空欄）",
   "overall_dimensions": { "width": 数値, "height": 数値, "depth": 数値 },
   "components": [
     {
-      "part_name": "部品名（前脚左／天板／側板左 など具体的に）",
+      "part_name": "部品名（前脚左／天板／左側板 など具体的に）",
       "shape": "rect",
       "width": 数値,
       "height": 数値,
@@ -1235,12 +1291,11 @@ W=1400, H=720, D=840, 脚60角の場合：
       "material": "材種",
       "grain_direction": "横目",
       "quantity": 1,
-      "joint_method": "ほぞ",
+      "joint_method": "",
       "notes": ""
     }
   ]
 }`;
-};
 // ══════════════════════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════════════════════
@@ -1341,7 +1396,7 @@ export default function App() {
         return (json.content||[]).find(b=>b.type==="text")?.text || "";
       };
 
-      // ── ステップ1：画像を観察・記述させる ──
+      // ── Step1：観察（BOX-first・アイソメ対応） ──
       const observation = await call([{
         role: "user",
         content: [
@@ -1350,11 +1405,18 @@ export default function App() {
         ]
       }], 1000);
 
+      setLoadStep("構造を分析中…");
+      // ── Step2：構造理解（部品辞書で意味分類） ──
+      const structure = await call([{
+        role: "user",
+        content: [{ type: "text", text: makePromptStructure(observation) }]
+      }], 800);
+
       setLoadStep("図面データを生成中…");
-      // ── ステップ2：観察結果をJSONに変換（画像なし） ──
+      // ── Step3：スキーマ生成（固定フォーマットでJSON出力） ──
       const jsonText = await call([{
         role: "user",
-        content: [{ type: "text", text: makePromptJSON(observation) }]
+        content: [{ type: "text", text: makePromptJSON(observation, structure) }]
       }], 2500);
 
       const m = jsonText.match(/\{[\s\S]*\}/);
@@ -1473,6 +1535,9 @@ export default function App() {
                   <div style={{fontSize:24,marginBottom:6}}>🖊️</div>
                   <div style={{fontSize:11,fontWeight:600,color:C.sub}}>スケッチをアップロード</div>
                   <div style={{fontSize:9,color:"#555",marginTop:3}}>JPEG / PNG / WebP</div>
+                  <div style={{fontSize:9,color:C.ok,marginTop:6,lineHeight:1.6}}>
+                    💡 精度UP<br/>品名と寸法を<br/>スケッチに書いてね
+                  </div>
                 </div>
             }
           </div>
