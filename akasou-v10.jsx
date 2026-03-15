@@ -1294,6 +1294,7 @@ export default function App() {
   const [imgB64,   setImgB64]   = useState(null);
   const [imgType,  setImgType]  = useState("image/jpeg");
   const [data,     setData]     = useState(null);
+  const [confirmDims, setConfirmDims] = useState(null); // 寸法確認UI用
   const [rawJson,  setRawJson]  = useState("");
   const [jsonEdit, setJsonEdit] = useState("");
   const [jsonErr,  setJsonErr]  = useState("");
@@ -1391,8 +1392,8 @@ export default function App() {
       const parsed = fixLegDimensions(JSON.parse(m[0]));
       const pretty = JSON.stringify(parsed, null, 2);
       setRawJson(pretty); setJsonEdit(pretty);
-      setData(parsed);
-      setTab("2d");
+      // ── 寸法確認UIを表示（Human-in-the-loop）──
+      setConfirmDims(parsed);
     } catch(e) { setError(e.message||"不明なエラー"); }
     setLoading(false); setLoadStep("");
   };
@@ -1637,6 +1638,89 @@ export default function App() {
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* ── 寸法確認モーダル（Human-in-the-loop）── */}
+      {confirmDims && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+          <div style={{background:C.panel,border:`1px solid ${C.border2}`,borderRadius:12,padding:28,width:340,boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
+            <div style={{fontSize:15,fontWeight:800,color:C.accent,marginBottom:6}}>📐 寸法を確認してください</div>
+            <div style={{fontSize:11,color:C.sub,marginBottom:20}}>AIの推定値です。正しい数値に修正してから確定してください。</div>
+
+            {/* 家具名 */}
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:10,color:C.sub,marginBottom:4}}>家具名</div>
+              <div style={{fontSize:14,fontWeight:700,color:C.text}}>{confirmDims.furniture_name}</div>
+            </div>
+
+            {/* W・H・D 確認フィールド */}
+            {[
+              ["幅（W）", "width",  "正面の横幅"],
+              ["高さ（H）","height", "全体の高さ"],
+              ["奥行き（D）","depth","前後の奥行き"],
+            ].map(([label, key, hint]) => (
+              <div key={key} style={{marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                  <span style={{fontSize:11,fontWeight:600,color:C.text}}>{label}</span>
+                  <span style={{fontSize:10,color:C.sub}}>{hint}</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input
+                    type="number"
+                    value={confirmDims.overall_dimensions?.[key] || ""}
+                    onChange={e => setConfirmDims(prev => ({
+                      ...prev,
+                      overall_dimensions: { ...prev.overall_dimensions, [key]: +e.target.value }
+                    }))}
+                    style={{flex:1,padding:"8px 12px",background:"#0d1117",border:`1.5px solid ${C.accent}`,borderRadius:6,color:"#79c0ff",fontSize:14,fontFamily:MONO,textAlign:"right",outline:"none"}}
+                  />
+                  <span style={{fontSize:11,color:C.sub}}>mm</span>
+                </div>
+              </div>
+            ))}
+
+            {/* 扉・棚ボタン（Human-in-the-loop） */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:10,color:C.sub,marginBottom:8}}>構造の確認（タップで切替）</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {[
+                  ["扉あり", ()=>confirmDims.components?.some(c=>c.part_name?.includes("扉"))],
+                  ["棚あり", ()=>confirmDims.components?.some(c=>c.part_name?.includes("棚"))],
+                ].map(([label, check]) => {
+                  const active = check();
+                  return (
+                    <div key={label} style={{
+                      padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",
+                      background: active ? C.ok+"33" : "#21262d",
+                      border: `1px solid ${active ? C.ok : C.border2}`,
+                      color: active ? C.ok : C.sub,
+                    }}>{active ? "✓ " : ""}{label}</div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 確定ボタン */}
+            <div style={{display:"flex",gap:8}}>
+              <button
+                onClick={() => {
+                  const pretty = JSON.stringify(confirmDims, null, 2);
+                  setRawJson(pretty); setJsonEdit(pretty);
+                  setData(confirmDims);
+                  setConfirmDims(null);
+                  setTab("2d");
+                }}
+                style={{flex:1,padding:"11px",background:C.accent2,color:"#fff",border:"none",borderRadius:7,fontSize:13,fontWeight:800,cursor:"pointer"}}>
+                ✓ この寸法で図面生成
+              </button>
+              <button
+                onClick={() => setConfirmDims(null)}
+                style={{padding:"11px 14px",background:"#21262d",color:C.sub,border:`1px solid ${C.border2}`,borderRadius:7,fontSize:12,cursor:"pointer"}}>
+                戻る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
