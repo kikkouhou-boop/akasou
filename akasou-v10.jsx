@@ -197,10 +197,20 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   }
   return <g>
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
-    {/* 扉：対角線2本（JIS製図の扉表現） */}
+    {/* 扉：JIS製図標準 - 対角線2本＋三角塗り分け */}
+    {isDoor && pass==="fill" && <>
+      {/* 上三角（左上→右上→中心）を薄く塗る */}
+      <polygon
+        points={`${px},${py} ${px+w},${py} ${px+w/2},${py+h/2}`}
+        fill="#c8bfae" opacity={0.6}/>
+      {/* 下三角（左下→右下→中心）を薄く塗る */}
+      <polygon
+        points={`${px},${py+h} ${px+w},${py+h} ${px+w/2},${py+h/2}`}
+        fill="#c8bfae" opacity={0.6}/>
+    </>}
     {isDoor && pass==="stroke" && <>
-      <line x1={px+2} y1={py+2} x2={px+w-2} y2={py+h-2} stroke="#666" strokeWidth={0.6}/>
-      <line x1={px+w-2} y1={py+2} x2={px+2} y2={py+h-2} stroke="#666" strokeWidth={0.6}/>
+      <line x1={px} y1={py} x2={px+w} y2={py+h} stroke="#555" strokeWidth={0.7}/>
+      <line x1={px+w} y1={py} x2={px} y2={py+h} stroke="#555" strokeWidth={0.7}/>
     </>}
     {/* 引き出し：水平線3本 */}
     {isDrawer && pass==="stroke" && [0.3,0.5,0.7].map((r,i)=>
@@ -917,9 +927,12 @@ function MaterialEngine({ data }) {
 
   const [matIdx,     setMatIdx]     = useState(0);
   const [boardPrice, setBoardPrice] = useState(MATERIAL_PRESETS[0].price);
+  // 赤木式：材料費 : 工賃 : 利益 = 3 : 3 : 3
+  // 工賃・利益は材料費と同額（自動計算）
+  // ただし作業時間ベースでも入力可能
+  const [useTimeMode, setUseTimeMode] = useState(false); // false=赤木式, true=時間入力
   const [laborHours, setLaborHours] = useState(4);
   const [hourlyRate, setHourlyRate] = useState(4000);
-  const [profitRate, setProfitRate] = useState(20);
 
   if (!data?.components?.length) return <div style={{padding:40,textAlign:"center",color:C.sub}}>図面データがありません</div>;
 
@@ -961,10 +974,11 @@ function MaterialEngine({ data }) {
   const adjustedArea= totalArea / YIELD;
   const boardsNeeded= Math.ceil(adjustedArea / boardArea);
   const materialCost= boardsNeeded * boardPrice;
-  const laborCost   = laborHours * hourlyRate;
-  const subtotal    = materialCost + laborCost;
-  const profit      = Math.round(subtotal * profitRate / 100);
-  const total       = subtotal + profit;
+
+  // 赤木式 3:3:3 または 時間入力モード
+  const laborCost = useTimeMode ? laborHours * hourlyRate : materialCost;
+  const profit    = materialCost; // 利益は常に材料費と同額
+  const total     = materialCost + laborCost + profit;
 
   const row = (label, val, col=C.text) => (
     <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
@@ -1042,36 +1056,54 @@ function MaterialEngine({ data }) {
 
       {/* 工賃 */}
       <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>⏱️ 工賃</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div>
-            <div style={{fontSize:10,color:C.sub,marginBottom:4}}>作業時間（時間）</div>
-            <input type="number" style={inputStyle} value={laborHours} onChange={e=>setLaborHours(+e.target.value)}/>
-          </div>
-          <div>
-            <div style={{fontSize:10,color:C.sub,marginBottom:4}}>時給（円）</div>
-            <input type="number" style={inputStyle} value={hourlyRate} onChange={e=>setHourlyRate(+e.target.value)}/>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:800,color:C.accent}}>⏱️ 工賃</div>
+          {/* モード切替 */}
+          <div style={{display:"flex",gap:0,borderRadius:6,overflow:"hidden",border:`1px solid ${C.border2}`}}>
+            {[["赤木式（自動）", false],["時間入力", true]].map(([label, mode])=>(
+              <button key={label} onClick={()=>setUseTimeMode(mode)}
+                style={{padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",border:"none",
+                  background:useTimeMode===mode?C.accent2:"#21262d",
+                  color:useTimeMode===mode?"#fff":C.sub}}>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
+
+        {!useTimeMode ? (
+          <div style={{padding:"10px 14px",background:"#0d1117",borderRadius:6,border:`1px solid ${C.border2}`}}>
+            <div style={{fontSize:10,color:C.sub,marginBottom:6}}>赤木式：材料費 : 工賃 : 利益 = 3 : 3 : 3</div>
+            <div style={{fontSize:12,color:C.text}}>工賃 = 材料費と同額（自動計算）</div>
+          </div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div>
+              <div style={{fontSize:10,color:C.sub,marginBottom:4}}>作業時間（時間）</div>
+              <input type="number" style={inputStyle} value={laborHours} onChange={e=>setLaborHours(+e.target.value)}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:C.sub,marginBottom:4}}>時給（円）</div>
+              <input type="number" style={inputStyle} value={hourlyRate} onChange={e=>setHourlyRate(+e.target.value)}/>
+            </div>
+          </div>
+        )}
         <div style={{marginTop:10}}>{row("工賃", `¥${laborCost.toLocaleString()}`, C.ok)}</div>
       </div>
 
       {/* 見積 */}
       <div style={{background:"#0d1117",border:`2px solid ${C.accent}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>💴 見積</div>
-        {row("材料費", `¥${materialCost.toLocaleString()}`)}
-        {row("工賃",   `¥${laborCost.toLocaleString()}`)}
-        <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
-          <span style={{fontSize:12,color:C.sub}}>利益率</span>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <input type="number" style={{...inputStyle,width:60}} value={profitRate} onChange={e=>setProfitRate(+e.target.value)}/>
-            <span style={{color:C.sub,fontSize:12}}>%</span>
-          </div>
-        </div>
-        {row("利益", `¥${profit.toLocaleString()}`)}
-        <div style={{display:"flex",justifyContent:"space-between",padding:"12px 0",marginTop:4}}>
+        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:4}}>💴 見積</div>
+        <div style={{fontSize:10,color:C.sub,marginBottom:14}}>材料費 × 3（赤木式）</div>
+        {row("材料費 ×1", `¥${materialCost.toLocaleString()}`)}
+        {row("工賃 ×1",   `¥${laborCost.toLocaleString()}`)}
+        {row("利益 ×1",   `¥${profit.toLocaleString()}`)}
+        <div style={{display:"flex",justifyContent:"space-between",padding:"14px 0",marginTop:4,borderTop:`2px solid ${C.accent2}`}}>
           <span style={{fontSize:15,fontWeight:800,color:C.text}}>見積合計</span>
-          <span style={{fontSize:22,fontWeight:900,fontFamily:MONO,color:C.accent}}>¥{total.toLocaleString()}</span>
+          <span style={{fontSize:24,fontWeight:900,fontFamily:MONO,color:C.accent}}>¥{total.toLocaleString()}</span>
+        </div>
+        <div style={{fontSize:10,color:C.sub,textAlign:"center",marginTop:4}}>
+          材料費 ¥{materialCost.toLocaleString()} × 3 = ¥{total.toLocaleString()}
         </div>
       </div>
     </div>
@@ -1422,6 +1454,11 @@ ${observation}
 - 脚のwidthとdepthは必ず同じ値（正方形断面）
 - 角材の脚はshape:"rect"、丸脚はshape:"cylinder"
 - 迷ったらshape:"rect"
+- 扉のdepth（板厚）は20。position z=0（前面）に配置する
+- 扉のwidthは「外寸幅 − 板厚×2」、heightは「外寸高さ − 板厚×2」
+- 収納BOXの部品は「天板・底板・左側板・右側板・背板」の5点が基本。扉・棚は必要な場合のみ追加
+- ★重要：スケッチに描かれていない部品（台・台輪・幕板など）は追加しない
+- ★重要：全ての部品のposition座標は overall_dimensions の範囲内に収めること
 
 出力形式：
 {
