@@ -1160,11 +1160,97 @@ function EasyEditor({ data, onApply }) {
 
 
 // ══════════════════════════════════════════════════
-// Sketch Engine v1 ── 3ステップ Chain-of-Thought
-// Step1: 観察（何が見えるか）
-// Step2: 構造理解（部品辞書で意味を分類）
-// Step3: スキーマ生成（固定フォーマットでJSON出力）
+// Sketch Engine v1 ── 2ステップ（安定版）
+// Step1: 観察（寸法・構造・タイトルを全読み）
+// Step2: JSON生成（収納BOX・扉・引き出し対応）
 // ══════════════════════════════════════════════════
+
+// Step1：観察プロンプト（BOX-first・アイソメ対応・寸法最優先）
+const PROMPT_OBSERVE = `このスケッチ画像を観察してください。職人が描いたアイソメ図（立体スケッチ）の場合があります。
+
+【最優先：タイトルと寸法の読み取り】
+1. 画像に書かれたタイトル・品名（例：「収納BOXの図面」）を必ず読み取ってください
+2. 画像に書かれた数字を全て読み取ってください（例：980, 450, 600, 500, 100, t20 など）
+   ★重要：「980」を「80」と読み間違えないでください。数字は慎重に全桁読んでください
+
+【観察の順番（BOX-first）】
+A. 全体の外形（箱の形・縦横比）
+B. 内部の構造（棚・扉・仕切りの有無）
+C. 脚の有無（テーブルなどの場合）
+D. 寸法の数字（全て）
+
+【必須回答項目】
+1. タイトル・品名
+2. 家具の種類（収納ボックス／テーブル／棚 など）
+3. 読み取れた全ての寸法数値（一つも漏らさず）
+4. 棚の有無と枚数
+5. 扉の有無
+6. 引き出しの有無
+7. スケッチの描き方（アイソメ立体図か正面図か）
+
+見えないものは「不明」と書いてください。`;
+
+// Step2：JSON生成プロンプト（収納BOX・扉・引き出し完全対応）
+const makePromptJSON = (observation) => `以下の観察記録から家具のJSONを生成してください。JSONのみ返答（前後に説明文不要）。
+
+【観察記録】
+${observation}
+
+【★寸法の使い方（最重要）】
+観察記録に書かれた数値を必ず使ってください。
+例：観察記録に「980, 600, 450」とあれば → overall_dimensions: {width:980, height:600, depth:450}
+★「980」を「80」に短縮するなど、数値を勝手に変えてはいけません
+
+【座標ルール】
+- 原点(0,0,0) = 家具の左・下・手前の角
+- x軸=右（幅）、y軸=上（高さ）、z軸=奥（奥行き）
+- positionは各部品の「左下手前の角」の座標
+
+【収納ボックスのお手本】W=980, H=600, D=450, 板厚20の場合：
+  天板:   {part_name:"天板",   width:980, height:20, depth:450, position:{x:0,   y:580, z:0}}
+  底板:   {part_name:"底板",   width:980, height:20, depth:450, position:{x:0,   y:0,   z:0}}
+  左側板: {part_name:"左側板", width:20,  height:600,depth:450, position:{x:0,   y:0,   z:0}}
+  右側板: {part_name:"右側板", width:20,  height:600,depth:450, position:{x:960, y:0,   z:0}}
+  背板:   {part_name:"背板",   width:940, height:560,depth:20,  position:{x:20,  y:20,  z:430}}
+  棚板:   {part_name:"棚板",   width:940, height:20, depth:430, position:{x:20,  y:280, z:20}}
+  扉:     {part_name:"扉",     width:940, height:560,depth:20,  position:{x:20,  y:20,  z:0}}
+
+【テーブルのお手本】W=1400, H=720, D=840, 脚60角の場合：
+  前脚左: {part_name:"前脚左", width:60, height:680, depth:60, position:{x:60,   y:0, z:60}}
+  前脚右: {part_name:"前脚右", width:60, height:680, depth:60, position:{x:1280, y:0, z:60}}
+  後脚左: {part_name:"後脚左", width:60, height:680, depth:60, position:{x:60,   y:0, z:720}}
+  後脚右: {part_name:"後脚右", width:60, height:680, depth:60, position:{x:1280, y:0, z:720}}
+  天板:   {part_name:"天板",   width:1400,height:40, depth:840, position:{x:0,   y:680,z:0}}
+
+【ルール】
+- 扉のpart_nameは必ず「扉」を含める（例：「扉」「左扉」「右扉」）
+- 引き出しのpart_nameは必ず「引き出し」を含める
+- 脚のwidthとdepthは必ず同じ値（正方形断面）
+- 迷ったらshape:"rect"
+
+出力形式：
+{
+  "furniture_name": "名称",
+  "material": "材種（不明なら空欄）",
+  "finish": "",
+  "overall_dimensions": { "width": 数値, "height": 数値, "depth": 数値 },
+  "components": [
+    {
+      "part_name": "部品名",
+      "shape": "rect",
+      "width": 数値,
+      "height": 数値,
+      "depth": 数値,
+      "panel_thickness": 数値,
+      "position": { "x": 数値, "y": 数値, "z": 数値 },
+      "material": "",
+      "grain_direction": "横目",
+      "quantity": 1,
+      "joint_method": "",
+      "notes": ""
+    }
+  ]
+}`;
 
 // 部品辞書（英語キー・日本語エイリアス）
 const PART_DICT = {
@@ -1413,27 +1499,20 @@ export default function App() {
         return (json.content||[]).find(b=>b.type==="text")?.text || "";
       };
 
-      // ── Step1：観察（BOX-first・職人アイソメ対応） ──
+      // ── Step1：観察（BOX-first・アイソメ対応・寸法最優先） ──
       const observation = await call([{
         role: "user",
         content: [
           { type: "image", source: { type: "base64", media_type: imgType, data: imgB64 }},
           { type: "text",  text: PROMPT_OBSERVE }
         ]
-      }], 1000);
-
-      setLoadStep("構造を分析中…");
-      // ── Step2：構造理解（部品辞書で意味分類） ──
-      const structure = await call([{
-        role: "user",
-        content: [{ type: "text", text: makePromptStructure(observation) }]
-      }], 800);
+      }], 1200);
 
       setLoadStep("図面データを生成中…");
-      // ── Step3：スキーマ生成（Woodwork Schema） ──
+      // ── Step2：JSON生成（寸法・扉・引き出し完全対応） ──
       const jsonText = await call([{
         role: "user",
-        content: [{ type: "text", text: makePromptJSON(observation, structure) }]
+        content: [{ type: "text", text: makePromptJSON(observation) }]
       }], 2500);
 
       const m = jsonText.match(/\{[\s\S]*\}/);
