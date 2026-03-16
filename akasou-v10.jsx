@@ -307,10 +307,24 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
   // 外形線（全体）
   const OutlineRect = ({x,y,w,h}) => <rect x={x} y={y} width={w} height={h} fill="none" stroke="#111" strokeWidth={1.8}/>;
 
+  // 範囲外の部品を除外（謎の白い部分の防止）
+  const validComps = comps.filter(c => {
+    const x = c.position?.x || 0;
+    const y = c.position?.y || 0;
+    const z = c.position?.z || 0;
+    const w = c.width || 0;
+    const h = c.height || 0;
+    const d = c.depth || 0;
+    return x >= -10 && y >= -10 && z >= -10 &&
+           x + w <= OW + 50 &&
+           y + h <= OH + 50 &&
+           z + d <= OD + 50;
+  });
+
   // 部品をdepth順(背面→前面)にソート（正面図・平面図用）
-  const sortedComps = [...comps].sort((a,b)=>((a.position?.z||0)-(b.position?.z||0)));
-  // 側面図用：x昇順(奥→手前)、x同値のときdepth昇順(薄い部品を先＝奥行き広い短手幕板を上に)
-  const sideSortedComps = [...comps].sort((a,b)=>{
+  const sortedComps = [...validComps].sort((a,b)=>((a.position?.z||0)-(b.position?.z||0)));
+  // 側面図用：x昇順(奥→手前)、x同値のときdepth昇順
+  const sideSortedComps = [...validComps].sort((a,b)=>{
     const ax = a.position?.x||0, bx = b.position?.x||0;
     if (ax !== bx) return ax - bx;
     return (a.depth||0) - (b.depth||0);
