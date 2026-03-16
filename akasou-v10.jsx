@@ -197,20 +197,16 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   }
   return <g>
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
-    {/* 扉：JIS製図標準 - 対角線2本＋三角塗り分け */}
-    {isDoor && pass==="fill" && <>
-      {/* 上三角（左上→右上→中心）を薄く塗る */}
-      <polygon
-        points={`${px},${py} ${px+w},${py} ${px+w/2},${py+h/2}`}
-        fill="#c8bfae" opacity={0.6}/>
-      {/* 下三角（左下→右下→中心）を薄く塗る */}
-      <polygon
-        points={`${px},${py+h} ${px+w},${py+h} ${px+w/2},${py+h/2}`}
-        fill="#c8bfae" opacity={0.6}/>
-    </>}
+    {/* 扉：赤木さん指定 - 観音扉（上△下▽、中央水平線あり） */}
     {isDoor && pass==="stroke" && <>
-      <line x1={px} y1={py} x2={px+w} y2={py+h} stroke="#555" strokeWidth={0.7}/>
-      <line x1={px+w} y1={py} x2={px} y2={py+h} stroke="#555" strokeWidth={0.7}/>
+      {/* 中央水平線（観音扉の分割線） */}
+      <line x1={px} y1={py+h/2} x2={px+w} y2={py+h/2} stroke="#555" strokeWidth={0.8}/>
+      {/* 上の扉：下2角→上中央（△） */}
+      <line x1={px} y1={py+h/2} x2={px+w/2} y2={py} stroke="#555" strokeWidth={0.7}/>
+      <line x1={px+w} y1={py+h/2} x2={px+w/2} y2={py} stroke="#555" strokeWidth={0.7}/>
+      {/* 下の扉：上2角→下中央（▽） */}
+      <line x1={px} y1={py+h/2} x2={px+w/2} y2={py+h} stroke="#555" strokeWidth={0.7}/>
+      <line x1={px+w} y1={py+h/2} x2={px+w/2} y2={py+h} stroke="#555" strokeWidth={0.7}/>
     </>}
     {/* 引き出し：水平線3本 */}
     {isDrawer && pass==="stroke" && [0.3,0.5,0.7].map((r,i)=>
@@ -914,25 +910,27 @@ function BOM({ data }) {
 // Material Engine v2 ── Cut List + 材料費・工賃・見積
 // ══════════════════════════════════════════════════
 function MaterialEngine({ data }) {
-  const BOARD_W = 1820, BOARD_H = 910; // 3×6板（mm）
+  const BOARD_W = 1820, BOARD_H = 910;
   const YIELD = 0.7;
 
   const MATERIAL_PRESETS = [
     { label:"ポリ合板 18mm",   price:5000,  thickness:18 },
     { label:"シナ合板 18mm",   price:7000,  thickness:18 },
     { label:"メラミン 18mm",   price:9000,  thickness:18 },
+    { label:"化粧板 18mm",     price:8000,  thickness:18 },
     { label:"無垢材（杉）",    price:15000, thickness:30 },
     { label:"無垢材（オーク）",price:35000, thickness:30 },
   ];
 
-  const [matIdx,     setMatIdx]     = useState(0);
-  const [boardPrice, setBoardPrice] = useState(MATERIAL_PRESETS[0].price);
-  // 赤木式：材料費 : 工賃 : 利益 = 3 : 3 : 3
-  // 工賃・利益は材料費と同額（自動計算）
-  // ただし作業時間ベースでも入力可能
-  const [useTimeMode, setUseTimeMode] = useState(false); // false=赤木式, true=時間入力
-  const [laborHours, setLaborHours] = useState(4);
-  const [hourlyRate, setHourlyRate] = useState(4000);
+  const [matIdx,      setMatIdx]      = useState(0);
+  const [boardPrice,  setBoardPrice]  = useState(MATERIAL_PRESETS[0].price);
+  const [useTimeMode, setUseTimeMode] = useState(false);
+  const [laborHours,  setLaborHours]  = useState(4);
+  const [hourlyRate,  setHourlyRate]  = useState(4000);
+  // 会社情報（B設計：複数職人対応）
+  const [companyName, setCompanyName] = useState("赤 装 木 工 所");
+  const [contactName, setContactName] = useState("");
+  const [clientName,  setClientName]  = useState("");
 
   if (!data?.components?.length) return <div style={{padding:40,textAlign:"center",color:C.sub}}>図面データがありません</div>;
 
@@ -977,8 +975,87 @@ function MaterialEngine({ data }) {
 
   // 赤木式 3:3:3 または 時間入力モード
   const laborCost = useTimeMode ? laborHours * hourlyRate : materialCost;
-  const profit    = materialCost; // 利益は常に材料費と同額
+  const profit    = materialCost;
   const total     = materialCost + laborCost + profit;
+
+  // ── 見積PDF出力 ──
+  const exportQuotePDF = () => {
+    const today = new Date().toLocaleDateString("ja-JP");
+    const od = data.overall_dimensions || {};
+    const win = window.open("", "_blank");
+    win.document.write(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<title>見積書</title>
+<style>
+  @page { size: A4; margin: 20mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; font-size:11px; color:#111; }
+  h1 { font-size:22px; font-weight:900; letter-spacing:8px; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; font-size:10px; color:#666; margin-bottom:24px; }
+  .meta { display:flex; justify-content:space-between; margin-bottom:20px; }
+  .meta-left { font-size:11px; line-height:1.8; }
+  .meta-right { font-size:10px; color:#444; text-align:right; line-height:1.8; }
+  .product { background:#f5f5f5; border-radius:4px; padding:10px 14px; margin-bottom:16px; }
+  .product h2 { font-size:14px; font-weight:700; margin-bottom:4px; }
+  .product p { font-size:10px; color:#555; }
+  table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+  thead th { background:#222; color:#fff; padding:7px 10px; font-size:10px; text-align:left; }
+  tbody td { padding:6px 10px; border-bottom:1px solid #e0e0e0; font-size:10px; }
+  tbody tr:nth-child(even) { background:#fafafa; }
+  .total-section { border:2px solid #1f6feb; border-radius:6px; padding:14px 18px; }
+  .total-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #e8e8e8; }
+  .total-row.final { padding:12px 0; border-bottom:none; border-top:2px solid #1f6feb; margin-top:4px; }
+  .total-label { font-size:12px; color:#555; }
+  .total-value { font-size:13px; font-weight:700; font-family:monospace; }
+  .total-value.big { font-size:22px; color:#1f6feb; }
+  .footer { margin-top:20px; font-size:9px; color:#999; text-align:center; }
+  .note { margin-top:16px; font-size:10px; color:#555; line-height:1.8; }
+  @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+</style>
+</head><body>
+<h1>見　積　書</h1>
+<p class="sub">TESHIGOTO — Craft Intelligence Platform</p>
+<div class="meta">
+  <div class="meta-left">
+    <div>${clientName ? `お客様：${clientName} 様` : ""}</div>
+  </div>
+  <div class="meta-right">
+    <div><strong>${companyName}</strong></div>
+    ${contactName ? `<div>担当：${contactName}</div>` : ""}
+    <div>作成日：${today}</div>
+  </div>
+</div>
+<div class="product">
+  <h2>${data.furniture_name || "家具"}</h2>
+  <p>W${od.width || "-"} × H${od.height || "-"} × D${od.depth || "-"} mm　|　材料：${MATERIAL_PRESETS[matIdx].label}</p>
+</div>
+<table>
+  <thead><tr>
+    <th>部品名</th><th>カット寸法</th><th>枚数</th>
+  </tr></thead>
+  <tbody>
+    ${cutList.map(p=>`<tr>
+      <td>${p.name}</td>
+      <td style="font-family:monospace">${p.cutW} × ${p.cutH} mm</td>
+      <td>${p.qty}</td>
+    </tr>`).join("")}
+  </tbody>
+</table>
+<div class="total-section">
+  <div class="total-row"><span class="total-label">材料費（3×6板 ${boardsNeeded}枚）</span><span class="total-value">¥${materialCost.toLocaleString()}</span></div>
+  <div class="total-row"><span class="total-label">工賃</span><span class="total-value">¥${laborCost.toLocaleString()}</span></div>
+  <div class="total-row"><span class="total-label">利益</span><span class="total-value">¥${profit.toLocaleString()}</span></div>
+  <div class="total-row final"><span class="total-label" style="font-size:15px;font-weight:800">お見積り合計</span><span class="total-value big">¥${total.toLocaleString()}</span></div>
+</div>
+<div class="note">
+  ※ 本見積書の有効期限は発行日より30日間です。<br>
+  ※ 材料費は市場価格により変動する場合があります。
+</div>
+<div class="footer">Powered by TESHIGOTO — Craft Intelligence Platform</div>
+<script>window.onload=()=>window.print();</script>
+</body></html>`);
+    win.document.close();
+  };
 
   const row = (label, val, col=C.text) => (
     <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
@@ -992,9 +1069,28 @@ function MaterialEngine({ data }) {
     color:"#79c0ff", fontSize:13, fontFamily:MONO, textAlign:"right",
     padding:"6px 10px", outline:"none", width:"100px"
   };
+  const textInputStyle = {
+    background:"#0d1117", border:`1px solid ${C.border2}`, borderRadius:5,
+    color:C.text, fontSize:12, padding:"6px 10px", outline:"none", width:"100%", fontFamily:SANS,
+  };
 
   return (
     <div style={{maxWidth:640}}>
+      {/* 会社情報 */}
+      <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>🏢 見積書情報</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+          {[["会社名・工房名", companyName, setCompanyName],
+            ["担当者名", contactName, setContactName],
+            ["お客様名", clientName, setClientName]
+          ].map(([label, val, setter])=>(
+            <div key={label}>
+              <div style={{fontSize:10,color:C.sub,marginBottom:4}}>{label}</div>
+              <input style={textInputStyle} value={val} onChange={e=>setter(e.target.value)} placeholder={label}/>
+            </div>
+          ))}
+        </div>
+      </div>
       {/* 材料設定 */}
       <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:C.accent,marginBottom:14}}>🪵 材料設定</div>
@@ -1106,6 +1202,12 @@ function MaterialEngine({ data }) {
           材料費 ¥{materialCost.toLocaleString()} × 3 = ¥{total.toLocaleString()}
         </div>
       </div>
+
+      {/* 見積PDF出力ボタン */}
+      <button onClick={exportQuotePDF}
+        style={{width:"100%",padding:"14px",background:"#d73a49",color:"#fff",border:"none",borderRadius:8,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:1,marginBottom:14}}>
+        📄 見積書PDFをダウンロード
+      </button>
     </div>
   );
 }
