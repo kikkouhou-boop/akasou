@@ -197,16 +197,10 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   }
   return <g>
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
-    {/* 扉：赤木さん指定 - 観音扉（上△下▽、中央水平線あり） */}
+    {/* 扉：対角線2本（シンプルX・赤木さん確認待ち） */}
     {isDoor && pass==="stroke" && <>
-      {/* 中央水平線（観音扉の分割線） */}
-      <line x1={px} y1={py+h/2} x2={px+w} y2={py+h/2} stroke="#555" strokeWidth={0.8}/>
-      {/* 上の扉：下2角→上中央（△） */}
-      <line x1={px} y1={py+h/2} x2={px+w/2} y2={py} stroke="#555" strokeWidth={0.7}/>
-      <line x1={px+w} y1={py+h/2} x2={px+w/2} y2={py} stroke="#555" strokeWidth={0.7}/>
-      {/* 下の扉：上2角→下中央（▽） */}
-      <line x1={px} y1={py+h/2} x2={px+w/2} y2={py+h} stroke="#555" strokeWidth={0.7}/>
-      <line x1={px+w} y1={py+h/2} x2={px+w/2} y2={py+h} stroke="#555" strokeWidth={0.7}/>
+      <line x1={px} y1={py} x2={px+w} y2={py+h} stroke="#555" strokeWidth={0.8}/>
+      <line x1={px+w} y1={py} x2={px} y2={py+h} stroke="#555" strokeWidth={0.8}/>
     </>}
     {/* 引き出し：水平線3本 */}
     {isDrawer && pass==="stroke" && [0.3,0.5,0.7].map((r,i)=>
@@ -2067,7 +2061,10 @@ export default function App() {
                 {[
                   {
                     label:"扉",
-                    check: d => d.components?.some(c=>c.part_name?.includes("扉")),
+                    check: d => d.components?.some(c=>{
+                      const n = c.part_name||"";
+                      return n.includes("扉")||n.includes("ドア")||n.includes("door")||n.toLowerCase().includes("door");
+                    }),
                     add: d => {
                       const W = d.overall_dimensions?.width || 800;
                       const H = d.overall_dimensions?.height || 600;
@@ -2084,7 +2081,10 @@ export default function App() {
                         }]
                       };
                     },
-                    remove: d => ({...d, components: d.components?.filter(c=>!c.part_name?.includes("扉"))})
+                    remove: d => ({...d, components: d.components?.filter(c=>{
+                      const n = c.part_name||"";
+                      return !n.includes("扉")&&!n.includes("ドア")&&!n.toLowerCase().includes("door");
+                    })})
                   },
                   {
                     label:"引き出し",
