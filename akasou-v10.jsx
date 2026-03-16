@@ -1054,7 +1054,65 @@ function MaterialEngine({ data }) {
 <div class="footer">Powered by TESHIGOTO — Craft Intelligence Platform</div>
 <script>window.onload=()=>window.print();</script>
 </body></html>`);
-    win.document.close();
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;background:#fff";
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>見積書</title><style>
+  @page { size: A4; margin: 20mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; font-size:11px; color:#111; }
+  h1 { font-size:22px; font-weight:900; letter-spacing:8px; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; font-size:10px; color:#666; margin-bottom:24px; }
+  .meta { display:flex; justify-content:space-between; margin-bottom:20px; }
+  .meta-left { font-size:11px; line-height:1.8; }
+  .meta-right { font-size:10px; color:#444; text-align:right; line-height:1.8; }
+  .product { background:#f5f5f5; border-radius:4px; padding:10px 14px; margin-bottom:16px; }
+  .product h2 { font-size:14px; font-weight:700; margin-bottom:4px; }
+  .product p { font-size:10px; color:#555; }
+  table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+  thead th { background:#222; color:#fff; padding:7px 10px; font-size:10px; text-align:left; }
+  tbody td { padding:6px 10px; border-bottom:1px solid #e0e0e0; font-size:10px; }
+  tbody tr:nth-child(even) { background:#fafafa; }
+  .total-section { border:2px solid #1f6feb; border-radius:6px; padding:14px 18px; }
+  .total-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #e8e8e8; }
+  .total-row.final { padding:12px 0; border-bottom:none; border-top:2px solid #1f6feb; margin-top:4px; }
+  .total-label { font-size:12px; color:#555; }
+  .total-value { font-size:13px; font-weight:700; font-family:monospace; }
+  .total-value.big { font-size:22px; color:#1f6feb; }
+  .footer { margin-top:20px; font-size:9px; color:#999; text-align:center; }
+  .note { margin-top:16px; font-size:10px; color:#555; line-height:1.8; }
+  .close-btn { position:fixed; top:12px; right:16px; padding:8px 18px; background:#d73a49; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:700; cursor:pointer; }
+  @media print { .close-btn { display:none; } body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+</style></head><body>
+<button class="close-btn" onclick="document.body.parentElement.parentElement.parentElement.removeChild(document.body.parentElement.parentElement)">✕ 閉じる</button>
+<button class="close-btn" style="right:100px;background:#1f6feb" onclick="window.print()">🖨️ 印刷</button>
+<h1>見　積　書</h1>
+<p class="sub">TESHIGOTO — Craft Intelligence Platform</p>
+<div class="meta">
+  <div class="meta-left"><div>${clientName ? `お客様：${clientName} 様` : ""}</div></div>
+  <div class="meta-right">
+    <div><strong>${companyName}</strong></div>
+    ${contactName ? `<div>担当：${contactName}</div>` : ""}
+    <div>作成日：${new Date().toLocaleDateString("ja-JP")}</div>
+  </div>
+</div>
+<div class="product">
+  <h2>${data.furniture_name || "家具"}</h2>
+  <p>W${(data.overall_dimensions||{}).width||"-"} × H${(data.overall_dimensions||{}).height||"-"} × D${(data.overall_dimensions||{}).depth||"-"} mm　|　材料：${MATERIAL_PRESETS[matIdx].label}</p>
+</div>
+<table>
+  <thead><tr><th>部品名</th><th>カット寸法</th><th>枚数</th></tr></thead>
+  <tbody>${cutList.map(p=>`<tr><td>${p.name}</td><td style="font-family:monospace">${p.cutW} × ${p.cutH} mm</td><td>${p.qty}</td></tr>`).join("")}</tbody>
+</table>
+<div class="total-section">
+  <div class="total-row"><span class="total-label">材料費（3×6板 ${boardsNeeded}枚）</span><span class="total-value">¥${materialCost.toLocaleString()}</span></div>
+  <div class="total-row"><span class="total-label">工賃</span><span class="total-value">¥${laborCost.toLocaleString()}</span></div>
+  <div class="total-row"><span class="total-label">利益</span><span class="total-value">¥${profit.toLocaleString()}</span></div>
+  <div class="total-row final"><span class="total-label" style="font-size:15px;font-weight:800">お見積り合計</span><span class="total-value big">¥${total.toLocaleString()}</span></div>
+</div>
+<div class="note">※ 本見積書の有効期限は発行日より30日間です。<br>※ 材料費は市場価格により変動する場合があります。</div>
+<div class="footer">Powered by TESHIGOTO — Craft Intelligence Platform</div>
+</body></html>`;
+    document.body.appendChild(iframe);
   };
 
   const row = (label, val, col=C.text) => (
@@ -1721,7 +1779,9 @@ export default function App() {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `${data?.furniture_name||"図面"}_JIS.svg`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   };
 
   const downloadPDF = () => {
@@ -1729,8 +1789,11 @@ export default function App() {
     const xml = new XMLSerializer().serializeToString(svgRef.current);
     const svgBlob = new Blob([xml], {type:"image/svg+xml;charset=utf-8"});
     const url = URL.createObjectURL(svgBlob);
-    const win = window.open("","_blank");
-    win.document.write(`<!DOCTYPE html><html><head>
+    // iframeで印刷（ポップアップブロック回避）
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+    iframe.contentDocument.write(`<!DOCTYPE html><html><head>
       <title>${data?.furniture_name||"図面"}</title>
       <style>
         @page { size: A3 landscape; margin: 10mm; }
@@ -1739,9 +1802,9 @@ export default function App() {
         @media print { body { min-height:unset; } }
       </style>
     </head><body>
-      <img src="${url}" onload="window.print();"/>
+      <img src="${url}" onload="window.print(); window.onafterprint=()=>document.body.removeChild(this.closest('iframe'))"/>
     </body></html>`);
-    win.document.close();
+    iframe.contentDocument.close();
   };
 
   const handleDimChange = (key, val) => {
