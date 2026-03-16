@@ -919,6 +919,7 @@ function MaterialEngine({ data }) {
   const [matIdx,      setMatIdx]      = useState(0);
   const [boardPrice,  setBoardPrice]  = useState(MATERIAL_PRESETS[0].price);
   const [useTimeMode, setUseTimeMode] = useState(false);
+  const [manualTotal, setManualTotal] = useState(null); // null=自動計算, 数値=手動入力
   const [laborHours,  setLaborHours]  = useState(4);
   const [hourlyRate,  setHourlyRate]  = useState(4000);
   // 会社情報（B設計：複数職人対応）
@@ -973,6 +974,8 @@ function MaterialEngine({ data }) {
   const total     = materialCost + laborCost + profit;
 
   // ── 見積PDF出力 ──
+  const finalTotal = manualTotal !== null ? manualTotal : total;
+
   const exportQuotePDF = () => {
     const today = new Date().toLocaleDateString("ja-JP");
     const od = data.overall_dimensions || {};
@@ -1246,12 +1249,36 @@ function MaterialEngine({ data }) {
         {row("材料費 ×1", `¥${materialCost.toLocaleString()}`)}
         {row("工賃 ×1",   `¥${laborCost.toLocaleString()}`)}
         {row("利益 ×1",   `¥${profit.toLocaleString()}`)}
-        <div style={{display:"flex",justifyContent:"space-between",padding:"14px 0",marginTop:4,borderTop:`2px solid ${C.accent2}`}}>
-          <span style={{fontSize:15,fontWeight:800,color:C.text}}>見積合計</span>
-          <span style={{fontSize:24,fontWeight:900,fontFamily:MONO,color:C.accent}}>¥{total.toLocaleString()}</span>
-        </div>
-        <div style={{fontSize:10,color:C.sub,textAlign:"center",marginTop:4}}>
-          材料費 ¥{materialCost.toLocaleString()} × 3 = ¥{total.toLocaleString()}
+        <div style={{borderTop:`2px solid ${C.accent2}`,marginTop:4,paddingTop:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:15,fontWeight:800,color:C.text}}>見積合計</span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:13,color:C.sub}}>¥</span>
+              <input
+                type="number"
+                value={manualTotal !== null ? manualTotal : total}
+                onChange={e => setManualTotal(+e.target.value)}
+                style={{
+                  background:"#1a2030", border:`2px solid ${C.accent}`,
+                  borderRadius:6, color:C.accent,
+                  fontSize:22, fontFamily:MONO, fontWeight:900,
+                  textAlign:"right", padding:"4px 10px",
+                  outline:"none", width:160
+                }}
+              />
+            </div>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:10,color:C.sub}}>
+              自動計算: ¥{total.toLocaleString()}
+            </div>
+            {manualTotal !== null && (
+              <button onClick={()=>setManualTotal(null)}
+                style={{fontSize:10,color:C.sub,background:"none",border:`1px solid ${C.border2}`,borderRadius:4,padding:"2px 8px",cursor:"pointer"}}>
+                自動に戻す
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2061,10 +2088,7 @@ export default function App() {
                 {[
                   {
                     label:"扉",
-                    check: d => d.components?.some(c=>{
-                      const n = c.part_name||"";
-                      return n.includes("扉")||n.includes("ドア")||n.includes("door")||n.toLowerCase().includes("door");
-                    }),
+                    check: d => d.components?.some(c=>c.part_name?.includes("扉")),
                     add: d => {
                       const W = d.overall_dimensions?.width || 800;
                       const H = d.overall_dimensions?.height || 600;
@@ -2081,10 +2105,7 @@ export default function App() {
                         }]
                       };
                     },
-                    remove: d => ({...d, components: d.components?.filter(c=>{
-                      const n = c.part_name||"";
-                      return !n.includes("扉")&&!n.includes("ドア")&&!n.toLowerCase().includes("door");
-                    })})
+                    remove: d => ({...d, components: d.components?.filter(c=>!c.part_name?.includes("扉"))})
                   },
                   {
                     label:"引き出し",
