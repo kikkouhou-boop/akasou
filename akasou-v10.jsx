@@ -1750,7 +1750,7 @@ export default function App() {
       ...parsed,
       components: parsed.components.map(comp => {
         const name = comp.part_name || "";
-        const isLeg = name.includes("脚") || name.includes("leg") || name.toLowerCase().includes("leg");
+        const isLeg = name.includes("脚") || name.toLowerCase().includes("leg");
 
         // 脚：正方形断面に統一
         if (isLeg && comp.shape !== "cylinder") {
@@ -1758,22 +1758,34 @@ export default function App() {
           return { ...comp, width: legSize, depth: legSize };
         }
 
-        // 天板・底板：widthをOWに統一（depthは変更しない）
-        if ((name.includes("天板") || name.includes("底板")) && OW > 0) {
-          const t = comp.height || 20;
-          const y = name.includes("天板") ? OH - t : 0;
-          return { ...comp, width: OW, position: { ...comp.position, x: 0, y } };
-        }
+        if (OW <= 0 || OH <= 0) return comp;
 
-        // 左側板：x=0、height=OH
+        // 板厚を推定（高さまたは幅の小さい方）
+        const guessT = (n) => (n.includes("天板")||n.includes("底板")) ? (comp.height||20)
+                             : (n.includes("左側板")||n.includes("右側板")) ? (comp.width||20)
+                             : (n.includes("背板")) ? (comp.depth||20) : 20;
+        const t = Math.min(guessT(name), 30); // 板厚上限30mm
+
+        // 天板：幅=OW, x=0, y=OH-t
+        if (name.includes("天板") && OW > 0) {
+          return { ...comp, width: OW, height: t,
+            position: { ...comp.position, x: 0, y: OH - t } };
+        }
+        // 底板：幅=OW, x=0, y=0
+        if (name.includes("底板") && OW > 0) {
+          return { ...comp, width: OW, height: t,
+            position: { ...comp.position, x: 0, y: 0 } };
+        }
+        // 左側板：x=0, 高さ=OH
         if (name.includes("左側板") && OH > 0) {
-          return { ...comp, height: OH, position: { ...comp.position, x: 0 } };
+          return { ...comp, height: OH,
+            position: { ...comp.position, x: 0 } };
         }
-
-        // 右側板：x=OW-板厚、height=OH
+        // 右側板：x=OW-板厚, 高さ=OH
         if (name.includes("右側板") && OW > 0 && OH > 0) {
-          const t = comp.width || 20;
-          return { ...comp, height: OH, position: { ...comp.position, x: OW - t } };
+          const tw = comp.width || 20;
+          return { ...comp, height: OH,
+            position: { ...comp.position, x: OW - tw } };
         }
 
         return comp;
@@ -1845,10 +1857,10 @@ export default function App() {
 
       const m = jsonText.match(/\{[\s\S]*\}/);
       if (!m) throw new Error("JSON取得失敗。返答: " + jsonText.slice(0,300));
-      const parsed = fixLegDimensions(JSON.parse(m[0]));
+      // ── 寸法確認UIを表示（fixLegDimensionsは確定後に実行）──
+      const parsed = JSON.parse(m[0]);
       const pretty = JSON.stringify(parsed, null, 2);
       setRawJson(pretty); setJsonEdit(pretty);
-      // ── 寸法確認UIを表示（Human-in-the-loop）──
       setConfirmDims(parsed);
     } catch(e) { setError(e.message||"不明なエラー"); }
     setLoading(false); setLoadStep("");
@@ -2232,9 +2244,11 @@ export default function App() {
             <div style={{display:"flex",gap:8}}>
               <button
                 onClick={() => {
-                  const pretty = JSON.stringify(confirmDims, null, 2);
+                  // ユーザーが確認した寸法でfixLegDimensionsを実行
+                  const fixed = fixLegDimensions(confirmDims);
+                  const pretty = JSON.stringify(fixed, null, 2);
                   setRawJson(pretty); setJsonEdit(pretty);
-                  setData(confirmDims);
+                  setData(fixed);
                   setConfirmDims(null);
                   setTab("2d");
                 }}
