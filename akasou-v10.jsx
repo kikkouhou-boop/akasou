@@ -1788,6 +1788,17 @@ export default function App() {
             position: { ...comp.position, x: OW - tw } };
         }
 
+        // 扉：幅=OW-板厚×2、高さ=OH-板厚×2、z=0
+        if (name.includes("扉") && OW > 0 && OH > 0) {
+          const tw = 20;
+          return { ...comp,
+            width: OW - tw*2,
+            height: OH - tw*2,
+            depth: tw,
+            position: { x: tw, y: tw, z: 0 }
+          };
+        }
+
         return comp;
       })
     };
