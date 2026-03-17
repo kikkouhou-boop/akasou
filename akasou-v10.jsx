@@ -2178,136 +2178,187 @@ export default function App() {
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
-      {/* ── 寸法確認モーダル（Human-in-the-loop）── */}
+      {/* ── 寸法確認モーダル（Human-in-the-loop / iPad最適化）── */}
       {confirmDims && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
-          <div style={{background:C.panel,border:`1px solid ${C.border2}`,borderRadius:12,padding:28,width:340,boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
-            <div style={{fontSize:15,fontWeight:800,color:C.accent,marginBottom:6}}>📐 寸法を確認してください</div>
-            <div style={{fontSize:11,color:C.sub,marginBottom:20}}>AIの推定値です。正しい数値に修正してから確定してください。</div>
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:1000}}>
+          <div style={{
+            background:C.panel,
+            border:`1px solid ${C.border2}`,
+            borderRadius:"20px 20px 0 0",
+            padding:"24px 20px 36px",
+            width:"100%",
+            maxWidth:640,
+            boxShadow:"0 -8px 48px rgba(0,0,0,0.6)",
+            maxHeight:"92vh",
+            overflowY:"auto",
+          }}>
+            {/* ハンドル */}
+            <div style={{width:40,height:4,background:C.border2,borderRadius:2,margin:"0 auto 20px"}}/>
 
-            {/* 家具名 */}
-            <div style={{marginBottom:16}}>
-              <div style={{fontSize:10,color:C.sub,marginBottom:4}}>家具名</div>
-              <div style={{fontSize:14,fontWeight:700,color:C.text}}>{confirmDims.furniture_name}</div>
+            {/* タイトル + 家具名 */}
+            <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:4}}>
+              <div style={{fontSize:16,fontWeight:800,color:C.accent}}>📐 寸法を確認</div>
+              <div style={{fontSize:13,fontWeight:700,color:C.text}}>{confirmDims.furniture_name}</div>
+            </div>
+            <div style={{fontSize:11,color:C.sub,marginBottom:22}}>AIの推定値です。正しい数値に修正してから確定してください。</div>
+
+            {/* ── W / H / D 横3列 ── */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:24}}>
+              {[
+                ["W", "width",  "幅"],
+                ["H", "height", "高さ"],
+                ["D", "depth",  "奥行"],
+              ].map(([letter, key, hint], idx) => (
+                <div key={key}>
+                  {/* ラベル */}
+                  <div style={{textAlign:"center",marginBottom:8}}>
+                    <span style={{fontSize:22,fontWeight:900,color:C.accent,fontFamily:MONO,lineHeight:1}}>{letter}</span>
+                    <span style={{fontSize:10,color:C.sub,marginLeft:5}}>{hint}</span>
+                  </div>
+                  {/* 数値入力（大きく・中央） */}
+                  <div style={{position:"relative",marginBottom:8}}>
+                    <input
+                      id={`dim-${key}`}
+                      type="number"
+                      inputMode="numeric"
+                      value={confirmDims.overall_dimensions?.[key] || ""}
+                      onChange={e => setConfirmDims(prev => ({
+                        ...prev,
+                        overall_dimensions: { ...prev.overall_dimensions, [key]: +e.target.value }
+                      }))}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" || e.key === "Tab") {
+                          e.preventDefault();
+                          const order = ["width","height","depth"];
+                          const next = order[idx + 1];
+                          if (next) document.getElementById(`dim-${next}`)?.focus();
+                        }
+                      }}
+                      style={{
+                        width:"100%", boxSizing:"border-box",
+                        padding:"12px 8px",
+                        background:"#0d1117",
+                        border:`2px solid ${C.accent}`,
+                        borderRadius:10,
+                        color:"#79c0ff",
+                        fontSize:22,
+                        fontFamily:MONO,
+                        fontWeight:700,
+                        textAlign:"center",
+                        outline:"none",
+                        WebkitAppearance:"none",
+                      }}
+                    />
+                    <span style={{position:"absolute",right:6,bottom:5,fontSize:9,color:C.sub}}>mm</span>
+                  </div>
+                  {/* ±ステッパー 2段（-50/-10 / +10/+50） */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+                    {[[-50,"−50"],[- 10,"−10"]].map(([d, label]) => (
+                      <button key={d}
+                        onClick={() => setConfirmDims(prev => ({
+                          ...prev,
+                          overall_dimensions: { ...prev.overall_dimensions, [key]: Math.max(1,(prev.overall_dimensions?.[key]||0)+d) }
+                        }))}
+                        style={{padding:"10px 0",background:"#21262d",color:C.sub,border:`1px solid ${C.border2}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"center"}}>
+                        {label}
+                      </button>
+                    ))}
+                    {[[+10,"+10"],[+50,"+50"]].map(([d, label]) => (
+                      <button key={d}
+                        onClick={() => setConfirmDims(prev => ({
+                          ...prev,
+                          overall_dimensions: { ...prev.overall_dimensions, [key]: (prev.overall_dimensions?.[key]||0)+d }
+                        }))}
+                        style={{padding:"10px 0",background:"#0d1f38",color:C.accent,border:`1px solid ${C.accent2}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"center"}}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {/* W・H・D 確認フィールド */}
-            {[
-              ["幅（W）", "width",  "正面の横幅"],
-              ["高さ（H）","height", "全体の高さ"],
-              ["奥行き（D）","depth","前後の奥行き"],
-            ].map(([label, key, hint]) => (
-              <div key={key} style={{marginBottom:14}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                  <span style={{fontSize:11,fontWeight:600,color:C.text}}>{label}</span>
-                  <span style={{fontSize:10,color:C.sub}}>{hint}</span>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input
-                    type="number"
-                    value={confirmDims.overall_dimensions?.[key] || ""}
-                    onChange={e => setConfirmDims(prev => ({
-                      ...prev,
-                      overall_dimensions: { ...prev.overall_dimensions, [key]: +e.target.value }
-                    }))}
-                    style={{flex:1,padding:"8px 12px",background:"#0d1117",border:`1.5px solid ${C.accent}`,borderRadius:6,color:"#79c0ff",fontSize:14,fontFamily:MONO,textAlign:"right",outline:"none"}}
-                  />
-                  <span style={{fontSize:11,color:C.sub}}>mm</span>
-                </div>
-              </div>
-            ))}
-
-            {/* 部品追加ボタン（Human-in-the-loop） */}
-            <div style={{marginBottom:18}}>
-              <div style={{fontSize:10,color:C.sub,marginBottom:8}}>部品の追加・削除</div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {/* ── 部品の追加・削除 ── */}
+            <div style={{marginBottom:22}}>
+              <div style={{fontSize:11,color:C.sub,marginBottom:10}}>部品の追加・削除</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                 {[
                   {
-                    label:"扉",
+                    label:"扉", icon:"🚪",
                     check: d => d.components?.some(c=>c.part_name?.includes("扉")),
                     add: d => {
                       const W = d.overall_dimensions?.width || 800;
                       const H = d.overall_dimensions?.height || 600;
-                      const D = d.overall_dimensions?.depth || 450;
                       const t = 20;
-                      return {
-                        ...d,
-                        components: [...(d.components||[]), {
-                          part_name:"扉", shape:"rect",
-                          width: W-t*2, height: H-t*2, depth: t,
-                          panel_thickness: t,
-                          position:{x:t, y:t, z:0},
-                          material:"", grain_direction:"縦目", quantity:1, joint_method:"蝶番", notes:""
-                        }]
-                      };
+                      return { ...d, components: [...(d.components||[]), {
+                        part_name:"扉", shape:"rect", width:W-t*2, height:H-t*2, depth:t,
+                        panel_thickness:t, position:{x:t,y:t,z:0},
+                        material:"", grain_direction:"縦目", quantity:1, joint_method:"蝶番", notes:""
+                      }]};
                     },
                     remove: d => ({...d, components: d.components?.filter(c=>!c.part_name?.includes("扉"))})
                   },
                   {
-                    label:"引き出し",
+                    label:"引き出し", icon:"📦",
                     check: d => d.components?.some(c=>c.part_name?.includes("引き出し")),
                     add: d => {
                       const W = d.overall_dimensions?.width || 800;
                       const H = d.overall_dimensions?.height || 600;
                       const D = d.overall_dimensions?.depth || 450;
                       const t = 20;
-                      return {
-                        ...d,
-                        components: [...(d.components||[]), {
-                          part_name:"引き出し", shape:"rect",
-                          width: W-t*2, height: Math.round(H/3)-t, depth: D-t,
-                          panel_thickness: t,
-                          position:{x:t, y:t, z:0},
-                          material:"", grain_direction:"横目", quantity:1, joint_method:"スライドレール", notes:""
-                        }]
-                      };
+                      return { ...d, components: [...(d.components||[]), {
+                        part_name:"引き出し", shape:"rect", width:W-t*2, height:Math.round(H/3)-t, depth:D-t,
+                        panel_thickness:t, position:{x:t,y:t,z:0},
+                        material:"", grain_direction:"横目", quantity:1, joint_method:"スライドレール", notes:""
+                      }]};
                     },
                     remove: d => ({...d, components: d.components?.filter(c=>!c.part_name?.includes("引き出し"))})
                   },
                   {
-                    label:"棚",
+                    label:"棚", icon:"📋",
                     check: d => d.components?.some(c=>c.part_name?.includes("棚")),
                     add: d => {
                       const W = d.overall_dimensions?.width || 800;
                       const H = d.overall_dimensions?.height || 600;
                       const D = d.overall_dimensions?.depth || 450;
                       const t = 20;
-                      return {
-                        ...d,
-                        components: [...(d.components||[]), {
-                          part_name:"棚板", shape:"rect",
-                          width: W-t*2, height: t, depth: D-t,
-                          panel_thickness: t,
-                          position:{x:t, y:Math.round(H/2), z:t},
-                          material:"", grain_direction:"横目", quantity:1, joint_method:"棚ダボ", notes:""
-                        }]
-                      };
+                      return { ...d, components: [...(d.components||[]), {
+                        part_name:"棚板", shape:"rect", width:W-t*2, height:t, depth:D-t,
+                        panel_thickness:t, position:{x:t,y:Math.round(H/2),z:t},
+                        material:"", grain_direction:"横目", quantity:1, joint_method:"棚ダボ", notes:""
+                      }]};
                     },
                     remove: d => ({...d, components: d.components?.filter(c=>!c.part_name?.includes("棚"))})
                   },
-                ].map(({label, check, add, remove}) => {
+                ].map(({label, icon, check, add, remove}) => {
                   const active = check(confirmDims);
                   return (
                     <button key={label}
                       onClick={() => setConfirmDims(active ? remove(confirmDims) : add(confirmDims))}
                       style={{
-                        padding:"7px 14px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer", border:"none",
-                        background: active ? C.ok+"33" : C.accent2+"33",
-                        border: `1px solid ${active ? C.ok : C.accent}`,
-                        color: active ? C.ok : C.accent,
+                        padding:"14px 8px",
+                        borderRadius:10,
+                        fontSize:13,
+                        fontWeight:700,
+                        cursor:"pointer",
+                        textAlign:"center",
+                        background: active ? C.ok+"22" : "#21262d",
+                        border: `1.5px solid ${active ? C.ok : C.border2}`,
+                        color: active ? C.ok : C.sub,
+                        display:"flex", flexDirection:"column", alignItems:"center", gap:4,
                       }}>
-                      {active ? `✓ ${label}あり` : `＋ ${label}を追加`}
+                      <span style={{fontSize:20}}>{icon}</span>
+                      <span>{active ? `✓ ${label}` : `＋ ${label}`}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* 確定ボタン */}
-            <div style={{display:"flex",gap:8}}>
+            {/* ── 確定ボタン ── */}
+            <div style={{display:"flex",gap:10}}>
               <button
                 onClick={() => {
-                  // ユーザーが確認した寸法でfixLegDimensionsを実行
                   const fixed = fixLegDimensions(confirmDims);
                   const pretty = JSON.stringify(fixed, null, 2);
                   setRawJson(pretty); setJsonEdit(pretty);
@@ -2315,12 +2366,12 @@ export default function App() {
                   setConfirmDims(null);
                   setTab("2d");
                 }}
-                style={{flex:1,padding:"11px",background:C.accent2,color:"#fff",border:"none",borderRadius:7,fontSize:13,fontWeight:800,cursor:"pointer"}}>
+                style={{flex:1,padding:"16px",background:C.accent2,color:"#fff",border:"none",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",letterSpacing:1}}>
                 ✓ この寸法で図面生成
               </button>
               <button
                 onClick={() => setConfirmDims(null)}
-                style={{padding:"11px 14px",background:"#21262d",color:C.sub,border:`1px solid ${C.border2}`,borderRadius:7,fontSize:12,cursor:"pointer"}}>
+                style={{padding:"16px 20px",background:"#21262d",color:C.sub,border:`1px solid ${C.border2}`,borderRadius:12,fontSize:13,cursor:"pointer",fontWeight:600}}>
                 戻る
               </button>
             </div>
