@@ -197,10 +197,16 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   }
   return <g>
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
-    {/* 扉：対角線2本（シンプルX・赤木さん確認待ち） */}
+    {/* 扉：観音扉（横向き）- 縦中央線＋左◁右▷ */}
     {isDoor && pass==="stroke" && <>
-      <line x1={px} y1={py} x2={px+w} y2={py+h} stroke="#555" strokeWidth={0.8}/>
-      <line x1={px+w} y1={py} x2={px} y2={py+h} stroke="#555" strokeWidth={0.8}/>
+      {/* 縦の中央線（左右扉の仕切り） */}
+      <line x1={px+w/2} y1={py} x2={px+w/2} y2={py+h} stroke="#444" strokeWidth={0.8}/>
+      {/* 左扉：上下の角 → 左中央（◁） */}
+      <line x1={px+w/2} y1={py} x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+      <line x1={px+w/2} y1={py+h} x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+      {/* 右扉：上下の角 → 右中央（▷） */}
+      <line x1={px+w/2} y1={py} x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+      <line x1={px+w/2} y1={py+h} x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
     </>}
     {/* 引き出し：水平線3本 */}
     {isDrawer && pass==="stroke" && [0.3,0.5,0.7].map((r,i)=>
@@ -345,6 +351,11 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
       style={{background:"#fff",maxWidth:"100%",display:"block",border:"1px solid #ccc"}}
       xmlns="http://www.w3.org/2000/svg">
       <rect width={SVG_W} height={SVG_H} fill="white"/>
+      <defs>
+        <clipPath id="clipFront"><rect x={fOX} y={fOY} width={fW} height={fH}/></clipPath>
+        <clipPath id="clipSide"><rect x={sOX} y={sOY} width={sW} height={sH}/></clipPath>
+        <clipPath id="clipTop"><rect x={tOX} y={tOY} width={tW} height={tD}/></clipPath>
+      </defs>
       <rect x={14} y={10} width={SVG_W-28} height={SVG_H-TBH-10} fill="none" stroke="#ddd" strokeWidth={0.5}/>
       <rect x={20} y={16} width={SVG_W-40} height={SVG_H-TBH-20} fill="none" stroke="#333" strokeWidth={0.8}/>
       <text x={28} y={28} fontSize={9} fill="#555" fontFamily={SANS} fontWeight="600">第三角法</text>
@@ -375,8 +386,10 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
           ・OH（高さ）：正面図右のみ
       */}
       {/* ── 正面図：1パス=塗り、2パス=線（線が常に最前面） ── */}
-      {sortedComps.map((c,i)=><CompFront key={`ff${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="fill"/>)}
-      {sortedComps.map((c,i)=><CompFront key={`fs${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="stroke"/>)}
+      <g clipPath="url(#clipFront)">
+        {sortedComps.map((c,i)=><CompFront key={`ff${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="fill"/>)}
+        {sortedComps.map((c,i)=><CompFront key={`fs${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="stroke"/>)}
+      </g>
       <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
       {/* 中心線：縦（左右対称）のみ。横中心線は上下非対称なので引かない */}
       {(()=>{
@@ -398,14 +411,19 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
       <Dim ax={fOX+fW} ay={fOY} bx={fOX+fW} by={fOY+fH} val={OH} gap={44} orient="v" onEdit={v=>onDimChange&&onDimChange("height",v)}/>
 
       {/* ── 平面図：1パス=塗り、2パス=線 ── */}
-      {sortedComps.map((c,i)=><CompTop key={`tf${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="fill"/>)}
-      {sortedComps.map((c,i)=><CompTop key={`ts${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="stroke"/>)}
+      <g clipPath="url(#clipTop)">
+        {sortedComps.map((c,i)=><CompTop key={`tf${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="fill"/>)}
+        {sortedComps.map((c,i)=><CompTop key={`ts${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="stroke"/>)}
+      </g>
       <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
+
       <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
       {/* ── 右側面図：1パス=塗り、2パス=線 ── */}
-      {sideSortedComps.map((c,i)=><CompSide key={`sf${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="fill"/>)}
-      {sideSortedComps.map((c,i)=><CompSide key={`ss${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="stroke"/>)}
+      <g clipPath="url(#clipSide)">
+        {sideSortedComps.map((c,i)=><CompSide key={`sf${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="fill"/>)}
+        {sideSortedComps.map((c,i)=><CompSide key={`ss${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="stroke"/>)}
+      </g>
       <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
       <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
