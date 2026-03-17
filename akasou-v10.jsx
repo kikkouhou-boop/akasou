@@ -2202,8 +2202,8 @@ export default function App() {
             </div>
             <div style={{fontSize:11,color:C.sub,marginBottom:22}}>AIの推定値です。正しい数値に修正してから確定してください。</div>
 
-            {/* ── W / H / D 一体型コントロール（縦3行）── */}
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+            {/* ── W / H / D 一体型コントロール（主操作・補助操作 2段）── */}
+            <div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:24}}>
               {[
                 ["W", "width",  "幅"],
                 ["H", "height", "高さ"],
@@ -2214,48 +2214,45 @@ export default function App() {
                   ...prev,
                   overall_dimensions: { ...prev.overall_dimensions, [key]: Math.max(1, (prev.overall_dimensions?.[key] || 0) + d) }
                 }));
-                const btnBase = {
-                  border:"none", borderRadius:10, cursor:"pointer",
-                  fontFamily:MONO, fontWeight:800, fontSize:14,
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  minWidth:52, height:64, flexShrink:0,
-                };
                 return (
                   <div key={key}>
-                    {/* ラベル行 */}
-                    <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:5,paddingLeft:2}}>
-                      <span style={{fontSize:18,fontWeight:900,color:C.accent,fontFamily:MONO}}>{letter}</span>
+                    {/* ラベル */}
+                    <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:6,paddingLeft:2}}>
+                      <span style={{fontSize:17,fontWeight:900,color:C.accent,fontFamily:MONO}}>{letter}</span>
                       <span style={{fontSize:11,color:C.sub}}>{hint}</span>
                     </div>
-                    {/* コントロール行：[−50][−10] 数値 [+10][+50] */}
-                    <div style={{display:"grid",gridTemplateColumns:"52px 52px 1fr 52px 52px",gap:5,alignItems:"stretch"}}>
-                      {/* −50 */}
-                      <button onClick={()=>step(-50)}
-                        style={{...btnBase,background:"#1c1c24",color:C.sub}}>
-                        −50
-                      </button>
-                      {/* −10 */}
-                      <button onClick={()=>step(-10)}
-                        style={{...btnBase,background:"#21262d",color:C.sub}}>
+
+                    {/* 主操作行：[−10]  数値  [+10] */}
+                    <div style={{display:"grid",gridTemplateColumns:"72px 1fr 72px",gap:6,marginBottom:5}}>
+                      <button
+                        onPointerDown={e=>e.currentTarget.style.transform="scale(0.93)"}
+                        onPointerUp={e=>{e.currentTarget.style.transform="scale(1)";step(-10);}}
+                        onPointerLeave={e=>e.currentTarget.style.transform="scale(1)"}
+                        style={{
+                          height:68, border:"none", borderRadius:12, cursor:"pointer",
+                          background:"#1a2540", color:C.accent,
+                          fontSize:18, fontFamily:MONO, fontWeight:800,
+                          transition:"transform 0.08s",
+                        }}>
                         −10
                       </button>
-                      {/* 数値表示（中央・タップでキーボード入力も可） */}
-                      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+
+                      {/* 数値（主役・大きく） */}
+                      <div style={{position:"relative"}}>
                         <input
-                          type="number"
-                          inputMode="numeric"
+                          type="number" inputMode="numeric"
                           value={val}
                           onChange={e => setConfirmDims(prev => ({
                             ...prev,
                             overall_dimensions: { ...prev.overall_dimensions, [key]: +e.target.value }
                           }))}
                           style={{
-                            width:"100%", height:64, boxSizing:"border-box",
+                            width:"100%", height:68, boxSizing:"border-box",
                             background:"#0d1117",
-                            border:`2px solid ${C.accent}`,
-                            borderRadius:10,
+                            border:`2.5px solid ${C.accent}`,
+                            borderRadius:12,
                             color:"#79c0ff",
-                            fontSize:26, fontFamily:MONO, fontWeight:800,
+                            fontSize:30, fontFamily:MONO, fontWeight:800,
                             textAlign:"center",
                             outline:"none",
                             WebkitAppearance:"none",
@@ -2263,18 +2260,46 @@ export default function App() {
                           }}
                         />
                         <span style={{
-                          position:"absolute",right:8,bottom:6,
-                          fontSize:10,color:C.sub,pointerEvents:"none"
+                          position:"absolute", right:8, bottom:7,
+                          fontSize:10, color:C.sub, pointerEvents:"none",
                         }}>mm</span>
                       </div>
-                      {/* +10 */}
-                      <button onClick={()=>step(+10)}
-                        style={{...btnBase,background:"#0d1f38",color:C.accent}}>
+
+                      <button
+                        onPointerDown={e=>e.currentTarget.style.transform="scale(0.93)"}
+                        onPointerUp={e=>{e.currentTarget.style.transform="scale(1)";step(+10);}}
+                        onPointerLeave={e=>e.currentTarget.style.transform="scale(1)"}
+                        style={{
+                          height:68, border:"none", borderRadius:12, cursor:"pointer",
+                          background:"#1a2540", color:C.accent,
+                          fontSize:18, fontFamily:MONO, fontWeight:800,
+                          transition:"transform 0.08s",
+                        }}>
                         +10
                       </button>
-                      {/* +50 */}
-                      <button onClick={()=>step(+50)}
-                        style={{...btnBase,background:"#0a1a2e",color:"#58a6ff99"}}>
+                    </div>
+
+                    {/* 補助操作行：−50（薄く小さく）　　　　+50 */}
+                    <div style={{display:"grid",gridTemplateColumns:"72px 1fr 72px",gap:6}}>
+                      <button
+                        onClick={()=>step(-50)}
+                        style={{
+                          height:32, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer",
+                          background:"transparent", color:C.sub,
+                          fontSize:12, fontFamily:MONO, fontWeight:600,
+                          opacity:0.55,
+                        }}>
+                        −50
+                      </button>
+                      <div/>{/* 中央は空白 */}
+                      <button
+                        onClick={()=>step(+50)}
+                        style={{
+                          height:32, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer",
+                          background:"transparent", color:C.sub,
+                          fontSize:12, fontFamily:MONO, fontWeight:600,
+                          opacity:0.55,
+                        }}>
                         +50
                       </button>
                     </div>
