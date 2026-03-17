@@ -2239,19 +2239,20 @@ export default function App() {
             </div>
             <div style={{fontSize:11,color:C.sub,marginBottom:22}}>AIの推定値です。正しい数値に修正してから確定してください。</div>
 
-            {/* ── W / H / D 一体型コントロール（操作感完成形）── */}
+            {/* ── W / H / D 一体型コントロール（7ボタン横一列）── */}
             <style>{`
               @keyframes dimFlash {
-                0%   { color: #fff; transform: scale(1.08); }
+                0%   { color: #fff; transform: scale(1.06); }
                 100% { color: #79c0ff; transform: scale(1); }
               }
-              .dim-value-anim { animation: dimFlash 0.18s ease-out; }
-              .dim-btn-main:active { transform: scale(0.91) !important; filter: brightness(1.25); }
-              .dim-btn-sub:active  { opacity: 0.9 !important; }
+              .dim-value-anim { animation: dimFlash 0.16s ease-out; }
+              .dim-btn-main:active  { transform: scale(0.90) !important; filter: brightness(1.3); }
+              .dim-btn-sub:active   { opacity: 1 !important; filter: brightness(1.2); }
+              .dim-btn-micro:active { opacity: 1 !important; filter: brightness(1.2); }
               input[type=number]::-webkit-inner-spin-button,
               input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
             `}</style>
-            <div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:24}}>
+            <div style={{display:"flex",flexDirection:"column",gap:16,marginBottom:24}}>
               {[
                 ["W", "width",  "幅"],
                 ["H", "height", "高さ"],
@@ -2259,8 +2260,47 @@ export default function App() {
               ].map(([letter, key, hint]) => {
                 const val = confirmDims.overall_dimensions?.[key] || 0;
                 const isFocused = dimFocus === key;
-                // アニメーション：dimAnimKeyにkeyが含まれるとき発火
                 const animClass = dimAnimKey?.startsWith(key) ? "dim-value-anim" : "";
+
+                // ボタン定義：[delta, label, tier]
+                // tier: "sub"=薄め / "main"=主操作 / "micro"=±1
+                const BTNS = [
+                  [-50, "−50", "sub"],
+                  [-10, "−10", "main"],
+                  [ -1, "−1",  "micro"],
+                  [ +1, "+1",  "micro"],
+                  [+10, "+10", "main"],
+                  [+50, "+50", "sub"],
+                ];
+
+                const btnStyle = (tier) => {
+                  if (tier === "main") return {
+                    height:64, border:"none", borderRadius:10, cursor:"pointer",
+                    background: isFocused ? "#223060" : "#1a2040",
+                    color: C.accent,
+                    fontSize:15, fontFamily:MONO, fontWeight:800,
+                    transition:"background 0.12s, transform 0.08s",
+                    userSelect:"none", WebkitUserSelect:"none", touchAction:"none",
+                  };
+                  if (tier === "micro") return {
+                    height:64, border:`1.5px solid ${C.border2}`, borderRadius:10, cursor:"pointer",
+                    background: isFocused ? "#161e30" : "#13181f",
+                    color: "#5080b0",
+                    fontSize:13, fontFamily:MONO, fontWeight:700,
+                    transition:"background 0.12s, transform 0.08s",
+                    userSelect:"none", WebkitUserSelect:"none", touchAction:"none",
+                  };
+                  // sub
+                  return {
+                    height:64, border:`1px solid ${C.border}`, borderRadius:10, cursor:"pointer",
+                    background:"transparent",
+                    color: C.sub,
+                    fontSize:13, fontFamily:MONO, fontWeight:600,
+                    opacity:0.45,
+                    transition:"opacity 0.1s, transform 0.08s",
+                    userSelect:"none", WebkitUserSelect:"none", touchAction:"none",
+                  };
+                };
 
                 return (
                   <div key={key}
@@ -2268,125 +2308,74 @@ export default function App() {
                     onPointerLeave={()=>setDimFocus(null)}
                     style={{
                       borderRadius:14,
-                      padding:"10px 10px 8px",
+                      padding:"10px 10px 10px",
                       background: isFocused ? "#1a2035" : "transparent",
-                      border: `1.5px solid ${isFocused ? C.accent2 : "transparent"}`,
+                      border:`1.5px solid ${isFocused ? C.accent2 : "transparent"}`,
                       transition:"background 0.15s, border-color 0.15s",
                     }}>
 
                     {/* ラベル */}
-                    <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:7,paddingLeft:2}}>
-                      <span style={{fontSize:16,fontWeight:900,color: isFocused ? C.accent : C.sub,fontFamily:MONO,transition:"color 0.15s"}}>{letter}</span>
+                    <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:8,paddingLeft:2}}>
+                      <span style={{fontSize:16,fontWeight:900,color:isFocused?C.accent:C.sub,fontFamily:MONO,transition:"color 0.15s"}}>{letter}</span>
                       <span style={{fontSize:11,color:C.sub}}>{hint}</span>
                     </div>
 
-                    {/* 主操作行：[−10] 数値 [+10] */}
-                    <div style={{display:"grid",gridTemplateColumns:"68px 1fr 68px",gap:6,marginBottom:5}}>
+                    {/* 7ボタン横一列：−50 −10 −1 [数値] +1 +10 +50 */}
+                    <div style={{display:"grid",gridTemplateColumns:"44px 52px 44px 1fr 44px 52px 44px",gap:4,alignItems:"stretch"}}>
+                      {BTNS.slice(0,3).map(([d, label, tier]) => (
+                        <button key={d}
+                          className={`dim-btn-${tier}`}
+                          onPointerDown={()=>startLongPress(key, d)}
+                          onPointerUp={stopLongPress}
+                          onPointerLeave={stopLongPress}
+                          onContextMenu={e=>e.preventDefault()}
+                          style={btnStyle(tier)}>
+                          {label}
+                        </button>
+                      ))}
 
-                      {/* −10（主ボタン） */}
-                      <button className="dim-btn-main"
-                        onPointerDown={()=>{ startLongPress(key,-10); }}
-                        onPointerUp={stopLongPress}
-                        onPointerLeave={stopLongPress}
-                        onContextMenu={e=>e.preventDefault()}
-                        style={{
-                          height:68, border:"none", borderRadius:12, cursor:"pointer",
-                          background: isFocused ? "#223060" : "#1a2040",
-                          color: C.accent,
-                          fontSize:18, fontFamily:MONO, fontWeight:800,
-                          transition:"background 0.12s, transform 0.08s",
-                          userSelect:"none", WebkitUserSelect:"none",
-                          touchAction:"none",
-                        }}>
-                        −10
-                      </button>
-
-                      {/* 数値表示（アニメ付き） */}
+                      {/* 数値（中央・主役） */}
                       <div style={{position:"relative"}}>
                         <input
-                          key={animClass} // アニメーション再発火のためkeyをリセット
+                          key={animClass}
                           className={animClass}
                           type="number" inputMode="numeric"
                           value={val}
                           onFocus={()=>setDimFocus(key)}
                           onBlur={()=>setDimFocus(null)}
-                          onChange={e => {
-                            setConfirmDims(prev => ({
+                          onChange={e=>{
+                            setConfirmDims(prev=>({
                               ...prev,
-                              overall_dimensions: { ...prev.overall_dimensions, [key]: +e.target.value }
+                              overall_dimensions:{...prev.overall_dimensions,[key]:+e.target.value}
                             }));
                             triggerDimAnim(key);
                           }}
                           style={{
-                            width:"100%", height:68, boxSizing:"border-box",
+                            width:"100%", height:64, boxSizing:"border-box",
                             background:"#0d1117",
                             border:`2.5px solid ${isFocused ? C.accent : C.border2}`,
-                            borderRadius:12,
+                            borderRadius:10,
                             color:"#79c0ff",
-                            fontSize:30, fontFamily:MONO, fontWeight:800,
-                            textAlign:"center",
-                            outline:"none",
-                            WebkitAppearance:"none",
-                            MozAppearance:"textfield",
+                            fontSize:26, fontFamily:MONO, fontWeight:800,
+                            textAlign:"center", outline:"none",
+                            WebkitAppearance:"none", MozAppearance:"textfield",
                             transition:"border-color 0.15s",
                           }}
                         />
-                        <span style={{
-                          position:"absolute", right:8, bottom:7,
-                          fontSize:10, color:C.sub, pointerEvents:"none",
-                        }}>mm</span>
+                        <span style={{position:"absolute",right:5,bottom:6,fontSize:9,color:C.sub,pointerEvents:"none"}}>mm</span>
                       </div>
 
-                      {/* +10（主ボタン） */}
-                      <button className="dim-btn-main"
-                        onPointerDown={()=>{ startLongPress(key,+10); }}
-                        onPointerUp={stopLongPress}
-                        onPointerLeave={stopLongPress}
-                        onContextMenu={e=>e.preventDefault()}
-                        style={{
-                          height:68, border:"none", borderRadius:12, cursor:"pointer",
-                          background: isFocused ? "#223060" : "#1a2040",
-                          color: C.accent,
-                          fontSize:18, fontFamily:MONO, fontWeight:800,
-                          transition:"background 0.12s, transform 0.08s",
-                          userSelect:"none", WebkitUserSelect:"none",
-                          touchAction:"none",
-                        }}>
-                        +10
-                      </button>
-                    </div>
-
-                    {/* 補助操作行：−50（薄く）　　　　+50 */}
-                    <div style={{display:"grid",gridTemplateColumns:"68px 1fr 68px",gap:6}}>
-                      <button className="dim-btn-sub"
-                        onPointerDown={()=>startLongPress(key,-50)}
-                        onPointerUp={stopLongPress}
-                        onPointerLeave={stopLongPress}
-                        onContextMenu={e=>e.preventDefault()}
-                        style={{
-                          height:30, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer",
-                          background:"transparent", color:C.sub,
-                          fontSize:12, fontFamily:MONO, fontWeight:600,
-                          opacity:0.5, transition:"opacity 0.1s",
-                          userSelect:"none", WebkitUserSelect:"none", touchAction:"none",
-                        }}>
-                        −50
-                      </button>
-                      <div/>
-                      <button className="dim-btn-sub"
-                        onPointerDown={()=>startLongPress(key,+50)}
-                        onPointerUp={stopLongPress}
-                        onPointerLeave={stopLongPress}
-                        onContextMenu={e=>e.preventDefault()}
-                        style={{
-                          height:30, border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer",
-                          background:"transparent", color:C.sub,
-                          fontSize:12, fontFamily:MONO, fontWeight:600,
-                          opacity:0.5, transition:"opacity 0.1s",
-                          userSelect:"none", WebkitUserSelect:"none", touchAction:"none",
-                        }}>
-                        +50
-                      </button>
+                      {BTNS.slice(3).map(([d, label, tier]) => (
+                        <button key={d}
+                          className={`dim-btn-${tier}`}
+                          onPointerDown={()=>startLongPress(key, d)}
+                          onPointerUp={stopLongPress}
+                          onPointerLeave={stopLongPress}
+                          onContextMenu={e=>e.preventDefault()}
+                          style={btnStyle(tier)}>
+                          {label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 );
