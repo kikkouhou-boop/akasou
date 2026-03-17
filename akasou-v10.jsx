@@ -1758,11 +1758,11 @@ export default function App() {
           return { ...comp, width: legSize, depth: legSize };
         }
 
-        // 天板・底板：widthをOWに統一
+        // 天板・底板：widthをOWに統一（depthは変更しない）
         if ((name.includes("天板") || name.includes("底板")) && OW > 0) {
           const t = comp.height || 20;
           const y = name.includes("天板") ? OH - t : 0;
-          return { ...comp, width: OW, depth: OD, position: { ...comp.position, y } };
+          return { ...comp, width: OW, position: { ...comp.position, x: 0, y } };
         }
 
         // 左側板：x=0、height=OH
