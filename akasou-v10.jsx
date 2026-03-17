@@ -1654,6 +1654,11 @@ ${observation}
 - 収納BOXの部品は「天板・底板・左側板・右側板・背板」の5点が基本。扉・棚は必要な場合のみ追加
 - ★重要：スケッチに描かれていない部品（台・台輪・幕板など）は追加しない
 - ★重要：全ての部品のposition座標は overall_dimensions の範囲内に収めること
+- ★重要：天板・底板のwidthは必ず overall_dimensions.width と同じ値にする
+- ★重要：左側板・右側板のheightは必ず overall_dimensions.height と同じ値にする
+- ★重要：右側板のposition.xは「overall_dimensions.width − 板厚」にする
+- ★重要：天板のposition.yは「overall_dimensions.height − 板厚」にする
+- 板厚は全部品で統一する（デフォルト20mm）
 
 出力形式：
 {
@@ -1719,16 +1724,40 @@ export default function App() {
   // 脚の寸法を自動補正（widthとdepthを正方形に統一）
   const fixLegDimensions = (parsed) => {
     if (!parsed?.components) return parsed;
+    const OW = parsed.overall_dimensions?.width || 0;
+    const OH = parsed.overall_dimensions?.height || 0;
+    const OD = parsed.overall_dimensions?.depth || 0;
+
     const fixed = {
       ...parsed,
       components: parsed.components.map(comp => {
         const name = comp.part_name || "";
         const isLeg = name.includes("脚") || name.includes("leg") || name.toLowerCase().includes("leg");
+
+        // 脚：正方形断面に統一
         if (isLeg && comp.shape !== "cylinder") {
-          // widthとdepthの大きい方を採用（ただし120mm上限）
           const legSize = Math.min(Math.max(comp.width || 60, comp.depth || 60), 120);
           return { ...comp, width: legSize, depth: legSize };
         }
+
+        // 天板・底板：widthをOWに統一
+        if ((name.includes("天板") || name.includes("底板")) && OW > 0) {
+          const t = comp.height || 20;
+          const y = name.includes("天板") ? OH - t : 0;
+          return { ...comp, width: OW, depth: OD, position: { ...comp.position, y } };
+        }
+
+        // 左側板：x=0、height=OH
+        if (name.includes("左側板") && OH > 0) {
+          return { ...comp, height: OH, position: { ...comp.position, x: 0 } };
+        }
+
+        // 右側板：x=OW-板厚、height=OH
+        if (name.includes("右側板") && OW > 0 && OH > 0) {
+          const t = comp.width || 20;
+          return { ...comp, height: OH, position: { ...comp.position, x: OW - t } };
+        }
+
         return comp;
       })
     };
