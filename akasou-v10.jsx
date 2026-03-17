@@ -2202,80 +2202,85 @@ export default function App() {
             </div>
             <div style={{fontSize:11,color:C.sub,marginBottom:22}}>AIの推定値です。正しい数値に修正してから確定してください。</div>
 
-            {/* ── W / H / D 横3列 ── */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:24}}>
+            {/* ── W / H / D 一体型コントロール（縦3行）── */}
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
               {[
                 ["W", "width",  "幅"],
                 ["H", "height", "高さ"],
-                ["D", "depth",  "奥行"],
-              ].map(([letter, key, hint], idx) => (
-                <div key={key}>
-                  {/* ラベル */}
-                  <div style={{textAlign:"center",marginBottom:8}}>
-                    <span style={{fontSize:22,fontWeight:900,color:C.accent,fontFamily:MONO,lineHeight:1}}>{letter}</span>
-                    <span style={{fontSize:10,color:C.sub,marginLeft:5}}>{hint}</span>
-                  </div>
-                  {/* 数値入力（大きく・中央） */}
-                  <div style={{position:"relative",marginBottom:8}}>
-                    <input
-                      id={`dim-${key}`}
-                      type="number"
-                      inputMode="numeric"
-                      value={confirmDims.overall_dimensions?.[key] || ""}
-                      onChange={e => setConfirmDims(prev => ({
-                        ...prev,
-                        overall_dimensions: { ...prev.overall_dimensions, [key]: +e.target.value }
-                      }))}
-                      onKeyDown={e => {
-                        if (e.key === "Enter" || e.key === "Tab") {
-                          e.preventDefault();
-                          const order = ["width","height","depth"];
-                          const next = order[idx + 1];
-                          if (next) document.getElementById(`dim-${next}`)?.focus();
-                        }
-                      }}
-                      style={{
-                        width:"100%", boxSizing:"border-box",
-                        padding:"12px 8px",
-                        background:"#0d1117",
-                        border:`2px solid ${C.accent}`,
-                        borderRadius:10,
-                        color:"#79c0ff",
-                        fontSize:22,
-                        fontFamily:MONO,
-                        fontWeight:700,
-                        textAlign:"center",
-                        outline:"none",
-                        WebkitAppearance:"none",
-                      }}
-                    />
-                    <span style={{position:"absolute",right:6,bottom:5,fontSize:9,color:C.sub}}>mm</span>
-                  </div>
-                  {/* ±ステッパー 2段（-50/-10 / +10/+50） */}
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
-                    {[[-50,"−50"],[- 10,"−10"]].map(([d, label]) => (
-                      <button key={d}
-                        onClick={() => setConfirmDims(prev => ({
-                          ...prev,
-                          overall_dimensions: { ...prev.overall_dimensions, [key]: Math.max(1,(prev.overall_dimensions?.[key]||0)+d) }
-                        }))}
-                        style={{padding:"10px 0",background:"#21262d",color:C.sub,border:`1px solid ${C.border2}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"center"}}>
-                        {label}
+                ["D", "depth",  "奥行き"],
+              ].map(([letter, key, hint]) => {
+                const val = confirmDims.overall_dimensions?.[key] || 0;
+                const step = (d) => setConfirmDims(prev => ({
+                  ...prev,
+                  overall_dimensions: { ...prev.overall_dimensions, [key]: Math.max(1, (prev.overall_dimensions?.[key] || 0) + d) }
+                }));
+                const btnBase = {
+                  border:"none", borderRadius:10, cursor:"pointer",
+                  fontFamily:MONO, fontWeight:800, fontSize:14,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  minWidth:52, height:64, flexShrink:0,
+                };
+                return (
+                  <div key={key}>
+                    {/* ラベル行 */}
+                    <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:5,paddingLeft:2}}>
+                      <span style={{fontSize:18,fontWeight:900,color:C.accent,fontFamily:MONO}}>{letter}</span>
+                      <span style={{fontSize:11,color:C.sub}}>{hint}</span>
+                    </div>
+                    {/* コントロール行：[−50][−10] 数値 [+10][+50] */}
+                    <div style={{display:"grid",gridTemplateColumns:"52px 52px 1fr 52px 52px",gap:5,alignItems:"stretch"}}>
+                      {/* −50 */}
+                      <button onClick={()=>step(-50)}
+                        style={{...btnBase,background:"#1c1c24",color:C.sub}}>
+                        −50
                       </button>
-                    ))}
-                    {[[+10,"+10"],[+50,"+50"]].map(([d, label]) => (
-                      <button key={d}
-                        onClick={() => setConfirmDims(prev => ({
-                          ...prev,
-                          overall_dimensions: { ...prev.overall_dimensions, [key]: (prev.overall_dimensions?.[key]||0)+d }
-                        }))}
-                        style={{padding:"10px 0",background:"#0d1f38",color:C.accent,border:`1px solid ${C.accent2}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"center"}}>
-                        {label}
+                      {/* −10 */}
+                      <button onClick={()=>step(-10)}
+                        style={{...btnBase,background:"#21262d",color:C.sub}}>
+                        −10
                       </button>
-                    ))}
+                      {/* 数値表示（中央・タップでキーボード入力も可） */}
+                      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={val}
+                          onChange={e => setConfirmDims(prev => ({
+                            ...prev,
+                            overall_dimensions: { ...prev.overall_dimensions, [key]: +e.target.value }
+                          }))}
+                          style={{
+                            width:"100%", height:64, boxSizing:"border-box",
+                            background:"#0d1117",
+                            border:`2px solid ${C.accent}`,
+                            borderRadius:10,
+                            color:"#79c0ff",
+                            fontSize:26, fontFamily:MONO, fontWeight:800,
+                            textAlign:"center",
+                            outline:"none",
+                            WebkitAppearance:"none",
+                            MozAppearance:"textfield",
+                          }}
+                        />
+                        <span style={{
+                          position:"absolute",right:8,bottom:6,
+                          fontSize:10,color:C.sub,pointerEvents:"none"
+                        }}>mm</span>
+                      </div>
+                      {/* +10 */}
+                      <button onClick={()=>step(+10)}
+                        style={{...btnBase,background:"#0d1f38",color:C.accent}}>
+                        +10
+                      </button>
+                      {/* +50 */}
+                      <button onClick={()=>step(+50)}
+                        style={{...btnBase,background:"#0a1a2e",color:"#58a6ff99"}}>
+                        +50
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* ── 部品の追加・削除 ── */}
