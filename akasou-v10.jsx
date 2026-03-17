@@ -1738,6 +1738,7 @@ export default function App() {
   const [dragging, setDragging] = useState(false);
   const svgRef  = useRef(null);
   const fileRef = useRef(null);
+  const loadRef = useRef(null); // プロジェクト読み込み用
 
   // 脚の寸法を自動補正（widthとdepthを正方形に統一）
   const fixLegDimensions = (parsed) => {
@@ -1912,6 +1913,46 @@ export default function App() {
     iframe.contentDocument.close();
   };
 
+  // ── プロジェクト保存 ──
+  const saveProject = () => {
+    if (!data) return;
+    const project = {
+      projectName: data.furniture_name || "プロジェクト",
+      savedAt: new Date().toISOString(),
+      data: data
+    };
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${data.furniture_name || "project"}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // ── プロジェクト読み込み ──
+  const loadProject = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const project = JSON.parse(e.target.result);
+        // 新旧フォーマット両対応
+        const loaded = project.data || project;
+        if (!loaded.overall_dimensions) throw new Error("無効なプロジェクトファイルです");
+        const fixed = fixLegDimensions(loaded);
+        const pretty = JSON.stringify(fixed, null, 2);
+        setData(fixed);
+        setRawJson(pretty);
+        setJsonEdit(pretty);
+        setTab("2d");
+      } catch(e) {
+        setError("読み込みエラー：" + e.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleDimChange = (key, val) => {
     if (!data) return;
     const updated = {
@@ -1959,7 +2000,18 @@ export default function App() {
         <div style={{width:1,height:30,background:C.border2}}/>
         <div style={{fontSize:10,color:C.sub}}>汎用コンポーネント方式 | 曲線対応 | JIS B 0001 第三角法</div>
         {data && (
-          <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+          <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
+            {/* Save / Load ボタン */}
+            <button onClick={saveProject}
+              style={{padding:"6px 14px",background:"#2d333b",color:C.ok,border:`1px solid ${C.ok}`,borderRadius:5,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+              💾 保存
+            </button>
+            <label style={{padding:"6px 14px",background:"#2d333b",color:C.warn,border:`1px solid ${C.warn}`,borderRadius:5,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+              📂 読込
+              <input ref={loadRef} type="file" accept=".json" style={{display:"none"}}
+                onChange={e=>{loadProject(e.target.files[0]); e.target.value="";}}/>
+            </label>
+            <div style={{width:1,height:20,background:C.border2}}/>
             <button onClick={downloadPDF} style={{padding:"6px 16px",background:"#d73a49",color:"#fff",border:"none",borderRadius:5,fontSize:11,fontWeight:600,cursor:"pointer"}}>
               PDFダウンロード
             </button>
