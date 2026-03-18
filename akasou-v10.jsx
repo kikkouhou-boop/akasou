@@ -1741,9 +1741,99 @@ export default function App() {
   const loadRef = useRef(null); // プロジェクト読み込み用
 
   // 寸法UI：長押し・アニメーション・フォーカス用
-  const [dimFocus,    setDimFocus]    = useState(null);   // 現在フォーカス中のkey
-  const [dimAnimKey,  setDimAnimKey]  = useState(null);   // アニメーション発火用
-  const longPressRef  = useRef(null); // {timer, interval}
+  const [dimFocus,    setDimFocus]    = useState(null);
+  const [dimAnimKey,  setDimAnimKey]  = useState(null);
+  const longPressRef  = useRef(null);
+
+  // チャット修正UI用
+  const [chatInput,   setChatInput]   = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError,   setChatError]   = useState("");
+
+  const parseChat = async () => {
+    const text = chatInput.trim();
+    if (!text || !confirmDims) return;
+    setChatLoading(true); setChatError("");
+    try {
+      const currentDims = confirmDims.overall_dimensions || {};
+      const currentComps = (confirmDims.components || []).map(c=>c.part_name).join("、") || "なし";
+      const prompt = `あなたは家具図面のJSONを修正するアシスタントです。
+現在の家具データ：
+- 幅(W): ${currentDims.width}mm
+- 高さ(H): ${currentDims.height}mm
+- 奥行き(D): ${currentDims.depth}mm
+- 部品: ${currentComps}
+
+ユーザーの修正指示：「${text}」
+
+上記の指示に従って、以下のJSONを返してください。変更不要な項目はそのままにしてください。
+必ずJSONのみを返し、説明文は不要です。
+
+{
+  "overall_dimensions": {
+    "width": 数値,
+    "height": 数値,
+    "depth": 数値
+  },
+  "add_parts": ["扉" | "引き出し" | "棚"],
+  "remove_parts": ["扉" | "引き出し" | "棚"]
+}`;
+
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 300,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error("API " + res.status);
+      const raw = (json.content||[]).find(b=>b.type==="text")?.text || "";
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("解析失敗");
+      const result = JSON.parse(m[0]);
+
+      setConfirmDims(prev => {
+        let next = { ...prev,
+          overall_dimensions: {
+            ...prev.overall_dimensions,
+            ...result.overall_dimensions,
+          }
+        };
+
+        // 部品追加
+        (result.add_parts || []).forEach(partName => {
+          const already = next.components?.some(c => c.part_name?.includes(partName));
+          if (already) return;
+          const W = next.overall_dimensions?.width || 800;
+          const H = next.overall_dimensions?.height || 600;
+          const D = next.overall_dimensions?.depth || 450;
+          const t = 20;
+          const partMap = {
+            "扉":     { part_name:"扉",    shape:"rect", width:W-t*2, height:H-t*2, depth:t, panel_thickness:t, position:{x:t,y:t,z:0}, grain_direction:"縦目", joint_method:"蝶番" },
+            "引き出し":{ part_name:"引き出し",shape:"rect", width:W-t*2, height:Math.round(H/3)-t, depth:D-t, panel_thickness:t, position:{x:t,y:t,z:0}, grain_direction:"横目", joint_method:"スライドレール" },
+            "棚":     { part_name:"棚板",  shape:"rect", width:W-t*2, height:t, depth:D-t, panel_thickness:t, position:{x:t,y:Math.round(H/2),z:t}, grain_direction:"横目", joint_method:"棚ダボ" },
+          };
+          const newComp = partMap[partName];
+          if (newComp) next = { ...next, components: [...(next.components||[]), { ...newComp, material:"", quantity:1, notes:"" }] };
+        });
+
+        // 部品削除
+        (result.remove_parts || []).forEach(partName => {
+          next = { ...next, components: next.components?.filter(c => !c.part_name?.includes(partName)) };
+        });
+
+        return next;
+      });
+
+      setChatInput("");
+    } catch(e) {
+      setChatError("うまく解釈できませんでした。もう少し具体的に入力してみてください。");
+    }
+    setChatLoading(false);
+  };
 
   const startLongPress = (key, delta) => {
     // 即時1回
@@ -2237,7 +2327,56 @@ export default function App() {
               <div style={{fontSize:16,fontWeight:800,color:C.accent}}>📐 寸法を確認</div>
               <div style={{fontSize:13,fontWeight:700,color:C.text}}>{confirmDims.furniture_name}</div>
             </div>
-            <div style={{fontSize:11,color:C.sub,marginBottom:22}}>AIの推定値です。正しい数値に修正してから確定してください。</div>
+            <div style={{fontSize:11,color:C.sub,marginBottom:16}}>AIの推定値です。正しい数値に修正してから確定してください。</div>
+
+            {/* ── チャット修正UI ── */}
+            <div style={{marginBottom:22}}>
+              <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
+                <div style={{flex:1,position:"relative"}}>
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={e=>{setChatInput(e.target.value);setChatError("");}}
+                    onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); parseChat(); }}}
+                    placeholder="例：幅800 / 引き出し2段 / 扉をつける"
+                    disabled={chatLoading}
+                    style={{
+                      width:"100%", boxSizing:"border-box",
+                      padding:"13px 16px",
+                      background:"#0d1117",
+                      border:`1.5px solid ${chatError ? C.err : chatInput ? C.accent : C.border2}`,
+                      borderRadius:10,
+                      color:C.text,
+                      fontSize:14,
+                      fontFamily:SANS,
+                      outline:"none",
+                      transition:"border-color 0.15s",
+                      opacity: chatLoading ? 0.6 : 1,
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={parseChat}
+                  disabled={!chatInput.trim() || chatLoading}
+                  style={{
+                    padding:"13px 18px",
+                    background: chatInput.trim() && !chatLoading ? C.accent2 : "#21262d",
+                    color: chatInput.trim() && !chatLoading ? "#fff" : C.sub,
+                    border:"none", borderRadius:10,
+                    fontSize:13, fontWeight:700, cursor: chatInput.trim() ? "pointer" : "default",
+                    flexShrink:0,
+                    transition:"background 0.15s, color 0.15s",
+                    minWidth:64,
+                  }}>
+                  {chatLoading
+                    ? <span style={{display:"inline-block",width:14,height:14,border:`2px solid ${C.border2}`,borderTopColor:"#fff",borderRadius:"50%",animation:"spin .6s linear infinite"}}/>
+                    : "反映"}
+                </button>
+              </div>
+              {chatError && (
+                <div style={{marginTop:6,fontSize:11,color:C.err,paddingLeft:2}}>{chatError}</div>
+              )}
+            </div>
 
             {/* ── W / H / D 一体型コントロール（7ボタン横一列）── */}
             <style>{`
