@@ -177,7 +177,7 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   const isSingleDoor = isDoor && !isLeftDoor && !isRightDoor; // 旧形式の互換
   const isDrawer = (part_name||"").includes("引き出し") || (part_name||"").includes("ドロワー");
 
-  const fill   = pass==="fill"   ? (isDoor?"#d0c9b8" : isDrawer?"#cdd4c0" : "#e0d8c8") : "none";
+  const fill   = pass==="fill"   ? (isDrawer?"#cdd4c0" : "#e0d8c8") : "none";
   const stroke = pass==="stroke" ? "#333" : "none";
   const sw     = pass==="stroke" ? 0.8 : 0;
 
@@ -1924,7 +1924,7 @@ export default function App() {
           const partMap = {
             "扉": null, // makeDoorPairで個別処理
             "引き出し":{ part_name:"引き出し",shape:"rect", width:W-t*2, height:Math.round(H/3)-t, depth:D-t, panel_thickness:t, position:{x:t,y:t,z:0}, grain_direction:"横目", joint_method:"スライドレール" },
-            "棚":     { part_name:"棚板",  shape:"rect", width:W-t*2, height:t, depth:D-t, panel_thickness:t, position:{x:t,y:Math.round(H/2),z:t}, grain_direction:"横目", joint_method:"棚ダボ" },
+            "棚":     { part_name:"棚板",  shape:"rect", width:W-t*2, height:t, depth:D-t*2, panel_thickness:t, position:{x:t,y:Math.round(H/2),z:t}, grain_direction:"横目", joint_method:"棚ダボ" },
           };
           if (partName === "扉") {
             const chiri = result.door_chiri ?? 2;
@@ -2760,7 +2760,7 @@ export default function App() {
                       const D = d.overall_dimensions?.depth || 450;
                       const t = 20;
                       return { ...d, components: [...(d.components||[]), {
-                        part_name:"棚板", shape:"rect", width:W-t*2, height:t, depth:D-t,
+                        part_name:"棚板", shape:"rect", width:W-t*2, height:t, depth:D-t*2,
                         panel_thickness:t, position:{x:t,y:Math.round(H/2),z:t},
                         material:"", grain_direction:"横目", quantity:1, joint_method:"棚ダボ", notes:""
                       }]};
