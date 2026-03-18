@@ -201,13 +201,13 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
     {isDoor && pass==="stroke" && <>
       {/* ちり（散り）：扉が框より内側に引っ込んでいる段差を表現 */}
       {chiri > 0 && (() => {
-        const cp = chiri * sc;
+        const cp = Math.max(chiri * sc, 4); // 最小4px保証（スケール小でも見える）
         return <>
           <rect x={px+cp} y={py+cp} width={Math.max(0,w-cp*2)} height={Math.max(0,h-cp*2)}
-            fill="none" stroke="#888" strokeWidth={0.6} strokeDasharray="2,1.5" opacity={0.7}/>
-          {/* ちり寸法注記（右下コーナー付近） */}
-          <text x={px+w-cp/2} y={py+h+10} textAnchor="middle"
-            fill="#888" fontSize={7} fontFamily={MONO}>↑{chiri}</text>
+            fill="none" stroke="#666" strokeWidth={0.8} strokeDasharray="3,2" opacity={0.85}/>
+          {/* ちり寸法注記（右下・引出線付き） */}
+          <line x1={px+w} y1={py+cp} x2={px+w+10} y2={py+cp} stroke="#666" strokeWidth={0.5}/>
+          <text x={px+w+12} y={py+cp+3} fill="#666" fontSize={7.5} fontFamily={MONO}>ちり {chiri}</text>
         </>;
       })()}
       {/* 縦の中央線（左右扉の仕切り） */}
