@@ -1830,21 +1830,40 @@ export default function App() {
     rec.lang = "ja-JP";
     rec.interimResults = true;
     rec.maxAlternatives = 1;
-    rec.onstart  = () => setIsRecording(true);
-    rec.onend    = () => setIsRecording(false);
-    rec.onerror  = () => { setIsRecording(false); setChatError("音声入力に失敗しました"); };
+    rec.continuous = false;
+
+    // iOS Safari対応：finalをrefに蓄積し、onendで確定セット
+    const finalRef = { current: "" };
+
+    rec.onstart = () => { finalRef.current = ""; setIsRecording(true); };
+
     rec.onresult = (e) => {
-      let interimText = "";
-      let finalText = "";
+      let interim = "";
+      let final = "";
       for (let i = 0; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalText += t;
-        else interimText += t;
+        if (e.results[i].isFinal) final += t;
+        else interim += t;
       }
-      // 確定テキスト優先、途中なら暫定テキストを表示
-      setChatInput(finalText || interimText);
+      if (final) finalRef.current = final;
+      // 話しながらリアルタイム表示
+      setChatInput(finalRef.current || interim);
       setChatError("");
     };
+
+    rec.onend = () => {
+      setIsRecording(false);
+      // onresultより後にonendが来る場合もfinalを確定セット
+      if (finalRef.current) {
+        setChatInput(finalRef.current);
+      }
+    };
+
+    rec.onerror = (e) => {
+      setIsRecording(false);
+      if (e.error !== "no-speech") setChatError("音声入力に失敗しました（" + e.error + "）");
+    };
+
     recognitionRef.current = rec;
     rec.start();
   };
