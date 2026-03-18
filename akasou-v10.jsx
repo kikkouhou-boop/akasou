@@ -1832,35 +1832,20 @@ export default function App() {
     }
     const rec = new SR();
     rec.lang = "ja-JP";
-    rec.interimResults = true;
+    rec.interimResults = false;
     rec.maxAlternatives = 1;
     rec.continuous = false;
 
-    // iOS Safari対応：finalをrefに蓄積し、onendで確定セット
-    const finalRef = { current: "" };
-
-    rec.onstart = () => { finalRef.current = ""; setIsRecording(true); };
+    rec.onstart = () => setIsRecording(true);
 
     rec.onresult = (e) => {
-      let interim = "";
-      let final = "";
-      for (let i = 0; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) final += t;
-        else interim += t;
-      }
-      if (final) finalRef.current = final;
-      // 話しながらリアルタイム表示
-      setChatInput(finalRef.current || interim);
+      const text = e.results[0][0].transcript;
+      setChatInput(text);
       setChatError("");
     };
 
     rec.onend = () => {
       setIsRecording(false);
-      // onresultより後にonendが来る場合もfinalを確定セット
-      if (finalRef.current) {
-        setChatInput(finalRef.current);
-      }
     };
 
     rec.onerror = (e) => {
