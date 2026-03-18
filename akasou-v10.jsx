@@ -1782,6 +1782,7 @@ export default function App() {
   const [chatInput,   setChatInput]   = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError,   setChatError]   = useState("");
+  const [chatToast,   setChatToast]   = useState("");
 
   const parseChat = async () => {
     const text = chatInput.trim();
@@ -1879,6 +1880,22 @@ export default function App() {
       });
 
       setChatInput("");
+
+      // 反映内容をまとめてトースト表示
+      const msgs = [];
+      if (result.overall_dimensions) {
+        const d = result.overall_dimensions;
+        if (d.width)  msgs.push(`W ${d.width}mm`);
+        if (d.height) msgs.push(`H ${d.height}mm`);
+        if (d.depth)  msgs.push(`D ${d.depth}mm`);
+      }
+      (result.add_parts||[]).forEach(p => msgs.push(`${p}を追加`));
+      (result.remove_parts||[]).forEach(p => msgs.push(`${p}を削除`));
+      if (result.door_quantity) msgs.push(`扉 ${result.door_quantity}枚`);
+      if (result.door_chiri)    msgs.push(`ちり ${result.door_chiri}mm`);
+      const toastMsg = msgs.length > 0 ? `✓ 反映しました：${msgs.join(" / ")}` : "✓ 反映しました";
+      setChatToast(toastMsg);
+      setTimeout(() => setChatToast(""), 3000);
     } catch(e) {
       setChatError("うまく解釈できませんでした。もう少し具体的に入力してみてください。");
     }
@@ -2354,7 +2371,10 @@ export default function App() {
         </div>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+      `}</style>
 
       {/* ── 寸法確認モーダル（Human-in-the-loop / iPad最適化）── */}
       {confirmDims && (
@@ -2426,6 +2446,17 @@ export default function App() {
               </div>
               {chatError && (
                 <div style={{marginTop:6,fontSize:11,color:C.err,paddingLeft:2}}>{chatError}</div>
+              )}
+              {chatToast && (
+                <div style={{
+                  marginTop:8, padding:"10px 14px",
+                  background:"#0f2d1a", border:`1px solid ${C.ok}`,
+                  borderRadius:8, color:C.ok,
+                  fontSize:12, fontWeight:600,
+                  animation:"fadeInUp 0.2s ease-out",
+                }}>
+                  {chatToast}
+                </div>
               )}
             </div>
 
