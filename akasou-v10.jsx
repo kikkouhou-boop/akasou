@@ -164,7 +164,7 @@ function makeProjector(OW, OH, OD, areaW, areaH, margin=0.82) {
 function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   const { shape="rect", width:W=0, height:H=0, depth:D=0,
     position:pos={}, grain_direction, arc_radius, arc_start_deg, arc_end_deg,
-    is_hidden, part_name="" } = comp;
+    is_hidden, part_name="", chiri=0 } = comp;
   const px = (pos.x||0)*sc + ox;
   const py = oy + (totalH - (pos.y||0) - H)*sc;
   const w = W*sc, h = H*sc;
@@ -199,6 +199,17 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     {/* 扉：観音扉（横向き）- 縦中央線＋左◁右▷ */}
     {isDoor && pass==="stroke" && <>
+      {/* ちり（散り）：扉が框より内側に引っ込んでいる段差を表現 */}
+      {chiri > 0 && (() => {
+        const cp = chiri * sc;
+        return <>
+          <rect x={px+cp} y={py+cp} width={Math.max(0,w-cp*2)} height={Math.max(0,h-cp*2)}
+            fill="none" stroke="#888" strokeWidth={0.6} strokeDasharray="2,1.5" opacity={0.7}/>
+          {/* ちり寸法注記（右下コーナー付近） */}
+          <text x={px+w-cp/2} y={py+h+10} textAnchor="middle"
+            fill="#888" fontSize={7} fontFamily={MONO}>↑{chiri}</text>
+        </>;
+      })()}
       {/* 縦の中央線（左右扉の仕切り） */}
       <line x1={px+w/2} y1={py} x2={px+w/2} y2={py+h} stroke="#444" strokeWidth={0.8}/>
       {/* 左扉：上下の角 → 左中央（◁） */}
@@ -327,10 +338,32 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
            z + d <= OD + 50;
   });
 
+  // ── quantityを展開（扉・引き出し等の複数枚対応）──
+  // quantity:2の扉 → 同じ高さで縦積み2コンポーネントに分割
+  const expandedComps = [];
+  validComps.forEach(c => {
+    const qty = Math.max(1, Math.round(+(c.quantity||1)));
+    const isDoorOrDrawer = (c.part_name||"").includes("扉") || (c.part_name||"").includes("引き出し");
+    if (qty <= 1 || !isDoorOrDrawer) {
+      expandedComps.push(c);
+      return;
+    }
+    const singleH = Math.floor((c.height||0) / qty);
+    for (let i = 0; i < qty; i++) {
+      expandedComps.push({
+        ...c,
+        part_name: qty > 1 ? `${c.part_name}${i+1}段` : c.part_name,
+        height: singleH,
+        quantity: 1,
+        position: { ...(c.position||{}), y: (c.position?.y||0) + i * singleH }
+      });
+    }
+  });
+
   // 部品をdepth順(背面→前面)にソート（正面図・平面図用）
-  const sortedComps = [...validComps].sort((a,b)=>((a.position?.z||0)-(b.position?.z||0)));
+  const sortedComps = [...expandedComps].sort((a,b)=>((a.position?.z||0)-(b.position?.z||0)));
   // 側面図用：x昇順(奥→手前)、x同値のときdepth昇順
-  const sideSortedComps = [...validComps].sort((a,b)=>{
+  const sideSortedComps = [...expandedComps].sort((a,b)=>{
     const ax = a.position?.x||0, bx = b.position?.x||0;
     if (ax !== bx) return ax - bx;
     return (a.depth||0) - (b.depth||0);
@@ -1764,19 +1797,22 @@ export default function App() {
 - 奥行き(D): ${currentDims.depth}mm
 - 部品: ${currentComps}
 
+専門用語：
+- ちり（散り）= 扉や引き出しの前板と框の端面の段差（mm）。例：ちり3mm
+- 観音扉 = 左右2枚の扉が中央で合わさる扉形式
+- 2段 / 3段 = 扉や引き出しの枚数（quantity）
+
 ユーザーの修正指示：「${text}」
 
-上記の指示に従って、以下のJSONを返してください。変更不要な項目はそのままにしてください。
+上記の指示に従って、以下のJSONを返してください。変更不要な項目は含めないでください。
 必ずJSONのみを返し、説明文は不要です。
 
 {
-  "overall_dimensions": {
-    "width": 数値,
-    "height": 数値,
-    "depth": 数値
-  },
+  "overall_dimensions": { "width": 数値, "height": 数値, "depth": 数値 },
   "add_parts": ["扉" | "引き出し" | "棚"],
-  "remove_parts": ["扉" | "引き出し" | "棚"]
+  "remove_parts": ["扉" | "引き出し" | "棚"],
+  "door_quantity": 扉の枚数（数値、変更ある場合のみ）,
+  "door_chiri": ちりのmm数（数値、変更ある場合のみ）
 }`;
 
       const res = await fetch("/api/generate", {
@@ -1824,6 +1860,20 @@ export default function App() {
         (result.remove_parts || []).forEach(partName => {
           next = { ...next, components: next.components?.filter(c => !c.part_name?.includes(partName)) };
         });
+
+        // 扉のquantity更新
+        if (result.door_quantity != null) {
+          next = { ...next, components: next.components?.map(c =>
+            c.part_name?.includes("扉") ? { ...c, quantity: result.door_quantity } : c
+          )};
+        }
+
+        // ちり更新
+        if (result.door_chiri != null) {
+          next = { ...next, components: next.components?.map(c =>
+            c.part_name?.includes("扉") ? { ...c, chiri: result.door_chiri } : c
+          )};
+        }
 
         return next;
       });
@@ -1923,6 +1973,7 @@ export default function App() {
             width: OW - tw*2,
             height: OH - tw*2,
             depth: tw,
+            chiri: comp.chiri ?? 2,   // ちりデフォルト2mm
             position: { x: tw, y: tw, z: 0 }
           };
         }
@@ -2535,7 +2586,7 @@ export default function App() {
                       const t = 20;
                       return { ...d, components: [...(d.components||[]), {
                         part_name:"扉", shape:"rect", width:W-t*2, height:H-t*2, depth:t,
-                        panel_thickness:t, position:{x:t,y:t,z:0},
+                        panel_thickness:t, position:{x:t,y:t,z:0}, chiri:2,
                         material:"", grain_direction:"縦目", quantity:1, joint_method:"蝶番", notes:""
                       }]};
                     },
