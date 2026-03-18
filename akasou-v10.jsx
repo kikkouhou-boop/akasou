@@ -1828,14 +1828,21 @@ export default function App() {
     }
     const rec = new SR();
     rec.lang = "ja-JP";
-    rec.interimResults = false;
+    rec.interimResults = true;
     rec.maxAlternatives = 1;
     rec.onstart  = () => setIsRecording(true);
     rec.onend    = () => setIsRecording(false);
     rec.onerror  = () => { setIsRecording(false); setChatError("音声入力に失敗しました"); };
     rec.onresult = (e) => {
-      const text = e.results[0][0].transcript;
-      setChatInput(text);
+      let interimText = "";
+      let finalText = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t;
+        else interimText += t;
+      }
+      // 確定テキスト優先、途中なら暫定テキストを表示
+      setChatInput(finalText || interimText);
       setChatError("");
     };
     recognitionRef.current = rec;
