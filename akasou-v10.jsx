@@ -288,6 +288,10 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
 
   if (is_hidden) return null;
 
+  // 扉は平面図に表示しない（JIS製図：扉は正面図のみ）
+  const partName = comp.part_name || "";
+  if (partName.includes("扉") || partName.includes("ドア")) return null;
+
   const fill   = pass==="fill"   ? "#e8e0d0" : "none";
   const stroke = pass==="stroke" ? "#333"    : "none";
   const sw = pass==="stroke" ? 0.8 : 0;
