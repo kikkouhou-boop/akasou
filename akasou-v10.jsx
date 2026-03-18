@@ -172,6 +172,9 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   if (is_hidden) return null;
 
   const isDoor   = (part_name||"").includes("扉") || (part_name||"").includes("ドア");
+  const isLeftDoor  = isDoor && (part_name||"").includes("左");
+  const isRightDoor = isDoor && (part_name||"").includes("右");
+  const isSingleDoor = isDoor && !isLeftDoor && !isRightDoor; // 旧形式の互換
   const isDrawer = (part_name||"").includes("引き出し") || (part_name||"").includes("ドロワー");
 
   const fill   = pass==="fill"   ? (isDoor?"#d0c9b8" : isDrawer?"#cdd4c0" : "#e0d8c8") : "none";
@@ -197,27 +200,40 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   }
   return <g>
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
-    {/* 扉：観音扉（横向き）- 縦中央線＋左◁右▷ */}
+    {/* 扉描画：左扉・右扉・旧形式（互換）それぞれ独立描画 */}
     {isDoor && pass==="stroke" && <>
-      {/* ちり（散り）：扉が框より内側に引っ込んでいる段差を表現 */}
+      {/* ちり（散り）：内側に破線矩形で段差を表現 */}
       {chiri > 0 && (() => {
-        const cp = Math.max(chiri * sc, 4); // 最小4px保証（スケール小でも見える）
+        const cp = Math.max(chiri * sc, 4);
         return <>
           <rect x={px+cp} y={py+cp} width={Math.max(0,w-cp*2)} height={Math.max(0,h-cp*2)}
             fill="none" stroke="#666" strokeWidth={0.8} strokeDasharray="3,2" opacity={0.85}/>
-          {/* ちり寸法注記（右下・引出線付き） */}
-          <line x1={px+w} y1={py+cp} x2={px+w+10} y2={py+cp} stroke="#666" strokeWidth={0.5}/>
-          <text x={px+w+12} y={py+cp+3} fill="#666" fontSize={7.5} fontFamily={MONO}>ちり {chiri}</text>
+          {/* 注記は右扉（または旧形式）にのみ表示 */}
+          {!isLeftDoor && <>
+            <line x1={px+w} y1={py+cp} x2={px+w+10} y2={py+cp} stroke="#666" strokeWidth={0.5}/>
+            <text x={px+w+12} y={py+cp+3} fill="#666" fontSize={7.5} fontFamily={MONO}>ちり {chiri}</text>
+          </>}
         </>;
       })()}
-      {/* 縦の中央線（左右扉の仕切り） */}
-      <line x1={px+w/2} y1={py} x2={px+w/2} y2={py+h} stroke="#444" strokeWidth={0.8}/>
-      {/* 左扉：上下の角 → 左中央（◁） */}
-      <line x1={px+w/2} y1={py} x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
-      <line x1={px+w/2} y1={py+h} x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
-      {/* 右扉：上下の角 → 右中央（▷） */}
-      <line x1={px+w/2} y1={py} x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
-      <line x1={px+w/2} y1={py+h} x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+      {/* 左扉（◁）：右端→左中央 */}
+      {isLeftDoor && <>
+        <line x1={px+w} y1={py}   x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+        <line x1={px+w} y1={py+h} x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+      </>}
+      {/* 右扉（▷）：左端に仕切り線＋左端→右中央 */}
+      {isRightDoor && <>
+        <line x1={px} y1={py-1}   x2={px} y2={py+h+1} stroke="#444" strokeWidth={0.8}/>
+        <line x1={px} y1={py}   x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+        <line x1={px} y1={py+h} x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+      </>}
+      {/* 旧形式（quantity/互換）：中央線＋両側三角 */}
+      {isSingleDoor && <>
+        <line x1={px+w/2} y1={py}   x2={px+w/2} y2={py+h}   stroke="#444" strokeWidth={0.8}/>
+        <line x1={px+w/2} y1={py}   x2={px}     y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+        <line x1={px+w/2} y1={py+h} x2={px}     y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+        <line x1={px+w/2} y1={py}   x2={px+w}   y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+        <line x1={px+w/2} y1={py+h} x2={px+w}   y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
+      </>}
     </>}
     {/* 引き出し：水平線3本 */}
     {isDrawer && pass==="stroke" && [0.3,0.5,0.7].map((r,i)=>
@@ -1736,6 +1752,23 @@ ${observation}
 }`;
 
 // ══════════════════════════════════════════════════
+// 観音扉ペア生成ユーティリティ
+// UIは「観音扉」1オプション → 内部で左扉・右扉2コンポに展開
+// ══════════════════════════════════════════════════
+function makeDoorPair(W, H, D, chiri=2) {
+  const t = 20;            // 框板厚
+  const innerW = W - t*2; // 内寸幅
+  const innerH = H - t*2; // 内寸高さ
+  const halfW  = Math.floor(innerW / 2);
+  const base = { shape:"rect", depth:t, panel_thickness:t,
+    material:"", grain_direction:"縦目", quantity:1, joint_method:"蝶番", notes:"", chiri };
+  return [
+    { ...base, part_name:"左扉", width:halfW,          height:innerH, position:{x:t,          y:t, z:0} },
+    { ...base, part_name:"右扉", width:innerW - halfW, height:innerH, position:{x:t + halfW,   y:t, z:0} },
+  ];
+}
+
+// ══════════════════════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════════════════════
 const TEST_TABLE = {
@@ -1849,10 +1882,15 @@ export default function App() {
           const D = next.overall_dimensions?.depth || 450;
           const t = 20;
           const partMap = {
-            "扉":     { part_name:"扉",    shape:"rect", width:W-t*2, height:H-t*2, depth:t, panel_thickness:t, position:{x:t,y:t,z:0}, grain_direction:"縦目", joint_method:"蝶番" },
+            "扉": null, // makeDoorPairで個別処理
             "引き出し":{ part_name:"引き出し",shape:"rect", width:W-t*2, height:Math.round(H/3)-t, depth:D-t, panel_thickness:t, position:{x:t,y:t,z:0}, grain_direction:"横目", joint_method:"スライドレール" },
             "棚":     { part_name:"棚板",  shape:"rect", width:W-t*2, height:t, depth:D-t, panel_thickness:t, position:{x:t,y:Math.round(H/2),z:t}, grain_direction:"横目", joint_method:"棚ダボ" },
           };
+          if (partName === "扉") {
+            const chiri = result.door_chiri ?? 2;
+            next = { ...next, components: [...(next.components||[]), ...makeDoorPair(W, H, D, chiri)] };
+            return;
+          }
           const newComp = partMap[partName];
           if (newComp) next = { ...next, components: [...(next.components||[]), { ...newComp, material:"", quantity:1, notes:"" }] };
         });
@@ -2609,17 +2647,13 @@ export default function App() {
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                 {[
                   {
-                    label:"扉", icon:"🚪",
+                    label:"観音扉", icon:"🚪",
                     check: d => d.components?.some(c=>c.part_name?.includes("扉")),
                     add: d => {
                       const W = d.overall_dimensions?.width || 800;
                       const H = d.overall_dimensions?.height || 600;
-                      const t = 20;
-                      return { ...d, components: [...(d.components||[]), {
-                        part_name:"扉", shape:"rect", width:W-t*2, height:H-t*2, depth:t,
-                        panel_thickness:t, position:{x:t,y:t,z:0}, chiri:2,
-                        material:"", grain_direction:"縦目", quantity:1, joint_method:"蝶番", notes:""
-                      }]};
+                      const D = d.overall_dimensions?.depth || 450;
+                      return { ...d, components: [...(d.components||[]), ...makeDoorPair(W, H, D, 2)] };
                     },
                     remove: d => ({...d, components: d.components?.filter(c=>!c.part_name?.includes("扉"))})
                   },
