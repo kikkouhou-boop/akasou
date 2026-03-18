@@ -1816,6 +1816,31 @@ export default function App() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError,   setChatError]   = useState("");
   const [chatToast,   setChatToast]   = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef(null);
+
+  const startVoiceInput = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setChatError("このブラウザは音声入力に対応していません"); return; }
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "ja-JP";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onstart  = () => setIsRecording(true);
+    rec.onend    = () => setIsRecording(false);
+    rec.onerror  = () => { setIsRecording(false); setChatError("音声入力に失敗しました"); };
+    rec.onresult = (e) => {
+      const text = e.results[0][0].transcript;
+      setChatInput(text);
+      setChatError("");
+    };
+    recognitionRef.current = rec;
+    rec.start();
+  };
 
   const parseChat = async () => {
     const text = chatInput.trim();
@@ -2412,6 +2437,7 @@ export default function App() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeInUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes micPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
       `}</style>
 
       {/* ── 寸法確認モーダル（Human-in-the-loop / iPad最適化）── */}
@@ -2440,49 +2466,86 @@ export default function App() {
 
             {/* ── チャット修正UI ── */}
             <div style={{marginBottom:22}}>
-              <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
-                <div style={{flex:1,position:"relative"}}>
+              <div style={{display:"flex",gap:6,alignItems:"stretch"}}>
+
+                {/* マイクボタン */}
+                <button
+                  onClick={startVoiceInput}
+                  title={isRecording ? "タップして停止" : "タップして話す"}
+                  style={{
+                    width:48, flexShrink:0,
+                    border:`1.5px solid ${isRecording ? C.err : C.border2}`,
+                    borderRadius:10,
+                    background: isRecording ? "#2d0808" : "#161b22",
+                    color: isRecording ? C.err : C.sub,
+                    fontSize:20, cursor:"pointer",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    animation: isRecording ? "micPulse 1s ease-in-out infinite" : "none",
+                    transition:"background 0.15s, border-color 0.15s",
+                  }}>
+                  🎤
+                </button>
+
+                {/* テキスト入力 */}
+                <div style={{flex:1, position:"relative"}}>
                   <input
                     type="text"
                     value={chatInput}
                     onChange={e=>{setChatInput(e.target.value);setChatError("");}}
                     onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); parseChat(); }}}
-                    placeholder="例：幅800 / 引き出し2段 / 扉をつける"
-                    disabled={chatLoading}
+                    placeholder="例：幅800 / 引き出し2段 / 🎤で話す"
+                    disabled={chatLoading || isRecording}
                     style={{
                       width:"100%", boxSizing:"border-box",
                       padding:"13px 16px",
-                      background:"#0d1117",
-                      border:`1.5px solid ${chatError ? C.err : chatInput ? C.accent : C.border2}`,
+                      background: isRecording ? "#1a0a0a" : "#0d1117",
+                      border:`1.5px solid ${isRecording ? C.err : chatError ? C.err : chatInput ? C.accent : C.border2}`,
                       borderRadius:10,
-                      color:C.text,
-                      fontSize:14,
-                      fontFamily:SANS,
+                      color: isRecording ? C.err : C.text,
+                      fontSize:14, fontFamily:SANS,
                       outline:"none",
-                      transition:"border-color 0.15s",
+                      transition:"all 0.15s",
                       opacity: chatLoading ? 0.6 : 1,
                     }}
                   />
+                  {/* 録音中インジケーター */}
+                  {isRecording && (
+                    <div style={{
+                      position:"absolute", right:12, top:"50%", transform:"translateY(-50%)",
+                      fontSize:11, color:C.err, fontWeight:700,
+                      animation:"micPulse 1s ease-in-out infinite",
+                    }}>● REC</div>
+                  )}
                 </div>
+
+                {/* 反映ボタン */}
                 <button
                   onClick={parseChat}
-                  disabled={!chatInput.trim() || chatLoading}
+                  disabled={!chatInput.trim() || chatLoading || isRecording}
                   style={{
                     padding:"13px 18px",
-                    background: chatInput.trim() && !chatLoading ? C.accent2 : "#21262d",
-                    color: chatInput.trim() && !chatLoading ? "#fff" : C.sub,
+                    background: chatInput.trim() && !chatLoading && !isRecording ? C.accent2 : "#21262d",
+                    color: chatInput.trim() && !chatLoading && !isRecording ? "#fff" : C.sub,
                     border:"none", borderRadius:10,
-                    fontSize:13, fontWeight:700, cursor: chatInput.trim() ? "pointer" : "default",
+                    fontSize:13, fontWeight:700,
+                    cursor: chatInput.trim() && !isRecording ? "pointer" : "default",
                     flexShrink:0,
                     transition:"background 0.15s, color 0.15s",
-                    minWidth:64,
+                    minWidth:60,
                   }}>
                   {chatLoading
                     ? <span style={{display:"inline-block",width:14,height:14,border:`2px solid ${C.border2}`,borderTopColor:"#fff",borderRadius:"50%",animation:"spin .6s linear infinite"}}/>
                     : "反映"}
                 </button>
               </div>
-              {chatError && (
+
+              {/* 録音中メッセージ */}
+              {isRecording && (
+                <div style={{marginTop:8,fontSize:12,color:C.err,paddingLeft:2,fontWeight:600}}>
+                  🎤 聞いています… 話し終わったらもう一度タップ
+                </div>
+              )}
+              {chatError && !isRecording && (
                 <div style={{marginTop:6,fontSize:11,color:C.err,paddingLeft:2}}>{chatError}</div>
               )}
               {chatToast && (
