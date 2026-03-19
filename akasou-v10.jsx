@@ -1879,7 +1879,7 @@ ${observation}
 // 観音扉ペア生成ユーティリティ
 // UIは「観音扉」1オプション → 内部で左扉・右扉2コンポに展開
 // ══════════════════════════════════════════════════
-function makeDoorPair(W, H, D, chiri=2) {
+function makeDoorPair(W, H, D, chiri=3) {
   const t = 20;            // 框板厚
   const innerW = W - t*2; // 内寸幅
   const innerH = H - t*2; // 内寸高さ
@@ -2152,7 +2152,7 @@ export default function App() {
             width: OW - tw*2,
             height: OH - tw*2,
             depth: tw,
-            chiri: comp.chiri ?? 2,
+            chiri: comp.chiri ?? 3,
             position: { x: tw, y: tw, z: 0 }
           };
         }
