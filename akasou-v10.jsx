@@ -948,6 +948,107 @@ function Interactive3D({ data }) {
 }
 
 // ══════════════════════════════════════════════════
+// 部品図（各部品の正面・寸法を一覧表示）
+// ══════════════════════════════════════════════════
+function PartDrawings({ data }) {
+  if (!data?.components?.length) return <div style={{padding:40,textAlign:"center",color:C.sub}}>部品情報がありません</div>;
+
+  const comps = data.components.filter(c => !c.is_hidden && (c.width||0) > 0 && (c.height||0) > 0);
+  const CARD_W = 200, CARD_H = 180, PAD = 16, DIM_GAP = 28;
+
+  return (
+    <div style={{display:"flex",flexWrap:"wrap",gap:16,padding:4}}>
+      {comps.map((comp, idx) => {
+        const W = +(comp.width||0), H = +(comp.height||0), D = +(comp.depth||0);
+        const isDoor = (comp.part_name||"").includes("扉");
+        const isDrawer = (comp.part_name||"").includes("引き出し");
+
+        // SVGエリア内でのスケール計算
+        const drawW = CARD_W - PAD*2 - DIM_GAP;
+        const drawH = CARD_H - PAD*2 - DIM_GAP;
+        const sc = Math.min(drawW / Math.max(W,1), drawH / Math.max(H,1)) * 0.82;
+        const pw = W * sc, ph = H * sc;
+        const ox = PAD + DIM_GAP/2 + (drawW - pw) / 2;
+        const oy = PAD + (drawH - ph) / 2;
+
+        const fill = isDoor ? "#e0d8c8" : isDrawer ? "#cdd4c0" : "#e0d8c8";
+
+        return (
+          <div key={idx} style={{
+            background:C.panel, border:`1px solid ${C.border2}`,
+            borderRadius:8, padding:"10px 10px 6px",
+            width:CARD_W, flexShrink:0,
+          }}>
+            {/* 部品名 */}
+            <div style={{fontSize:11,fontWeight:700,color:C.accent,marginBottom:6,
+              whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+              {String(idx+1).padStart(2,"0")}. {comp.part_name}
+            </div>
+
+            {/* SVG図 */}
+            <svg width={CARD_W} height={CARD_H} style={{display:"block"}}>
+              {/* 部品の矩形 */}
+              <rect x={ox} y={oy} width={Math.max(pw,1)} height={Math.max(ph,1)}
+                fill={fill} stroke="#555" strokeWidth={0.8}/>
+
+              {/* 木目 */}
+              {comp.grain_direction && (() => {
+                const dir = comp.grain_direction === "縦目" ? "v" : "h";
+                const n = 4;
+                return Array.from({length:n-1},(_,i) => dir==="h"
+                  ? <line key={i} x1={ox+2} y1={oy+ph/n*(i+1)} x2={ox+pw-2} y2={oy+ph/n*(i+1)}
+                      stroke="#b5882a" strokeWidth={0.4} strokeDasharray="3,2" opacity={0.5}/>
+                  : <line key={i} x1={ox+pw/n*(i+1)} y1={oy+2} x2={ox+pw/n*(i+1)} y2={oy+ph-2}
+                      stroke="#b5882a" strokeWidth={0.4} strokeDasharray="3,2" opacity={0.5}/>
+                );
+              })()}
+
+              {/* 扉の対角線 */}
+              {isDoor && <>
+                <line x1={ox} y1={oy} x2={ox+pw} y2={oy+ph} stroke="#888" strokeWidth={0.6}/>
+                <line x1={ox+pw} y1={oy} x2={ox} y2={oy+ph} stroke="#888" strokeWidth={0.6}/>
+              </>}
+
+              {/* 引き出しの横線 */}
+              {isDrawer && [0.3,0.5,0.7].map((r,i)=>
+                <line key={i} x1={ox+4} y1={oy+ph*r} x2={ox+pw-4} y2={oy+ph*r}
+                  stroke="#888" strokeWidth={0.5}/>
+              )}
+
+              {/* 幅寸法（上） */}
+              <line x1={ox} y1={oy-4} x2={ox} y2={oy-10} stroke={C.dim} strokeWidth={0.5}/>
+              <line x1={ox+pw} y1={oy-4} x2={ox+pw} y2={oy-10} stroke={C.dim} strokeWidth={0.5}/>
+              <line x1={ox} y1={oy-8} x2={ox+pw} y2={oy-8} stroke={C.dim} strokeWidth={0.5}
+                markerStart="url(#pd-arr)" markerEnd="url(#pd-arr)"/>
+              <text x={ox+pw/2} y={oy-12} textAnchor="middle"
+                fill={C.dim} fontSize={8} fontFamily={MONO} fontWeight="600">{Math.round(W)}</text>
+
+              {/* 高さ寸法（右） */}
+              <line x1={ox+pw+4} y1={oy} x2={ox+pw+10} y2={oy} stroke={C.dim} strokeWidth={0.5}/>
+              <line x1={ox+pw+4} y1={oy+ph} x2={ox+pw+10} y2={oy+ph} stroke={C.dim} strokeWidth={0.5}/>
+              <line x1={ox+pw+8} y1={oy} x2={ox+pw+8} y2={oy+ph} stroke={C.dim} strokeWidth={0.5}/>
+              <text x={ox+pw+11} y={oy+ph/2+3} fill={C.dim} fontSize={8} fontFamily={MONO} fontWeight="600">{Math.round(H)}</text>
+
+              {/* 矢印マーカー定義 */}
+              <defs>
+                <marker id="pd-arr" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                  <path d="M1 1L5 3L1 5" fill="none" stroke={C.dim} strokeWidth="1"/>
+                </marker>
+              </defs>
+            </svg>
+
+            {/* 寸法テキスト */}
+            <div style={{fontSize:9,color:C.sub,fontFamily:MONO,marginTop:4,textAlign:"center"}}>
+              W{Math.round(W)} × H{Math.round(H)}{D > 0 ? ` × D${Math.round(D)}` : ""} mm
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
 // 部品表
 // ══════════════════════════════════════════════════
 function BOM({ data }) {
@@ -2235,6 +2336,7 @@ export default function App() {
   const TABS = [
     { key:"2d",       label:"2D図面（JIS）" },
     { key:"3d",       label:"3Dモデル" },
+    { key:"parts",    label:"📋 部品図" },
     { key:"bom",      label:"部品表" },
     { key:"estimate", label:"💴 見積" },
     { key:"edit",     label:"✏️ かんたん編集" },
@@ -2391,6 +2493,8 @@ export default function App() {
               )}
 
               {tab==="bom" && <BOM data={data}/>}
+
+              {tab==="parts" && <PartDrawings data={data}/>}
 
               {tab==="estimate" && <MaterialEngine data={data}/>}
 
@@ -2673,7 +2777,7 @@ export default function App() {
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                 {[
                   {
-                    label:"観音扉", icon:"🚪",
+                    label:"扉", icon:"🚪",
                     check: d => d.components?.some(c=>c.part_name?.includes("扉")),
                     add: d => {
                       const W = d.overall_dimensions?.width || 800;
