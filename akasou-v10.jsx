@@ -292,6 +292,13 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
   const partName = comp.part_name || "";
   if (partName.includes("扉") || partName.includes("ドア")) return null;
 
+  // 棚板は平面図では前端の横線1本で表現（塗りつぶしは外枠を隠す）
+  const isShelf = partName.includes("棚");
+  if (isShelf) {
+    if (pass === "fill") return null; // 塗りなし
+    return <line x1={px} y1={py} x2={px+w} y2={py} stroke="#555" strokeWidth={0.8} strokeDasharray="4,2"/>;
+  }
+
   const fill   = pass==="fill"   ? "#e8e0d0" : "none";
   const stroke = pass==="stroke" ? "#333"    : "none";
   const sw = pass==="stroke" ? 0.8 : 0;
