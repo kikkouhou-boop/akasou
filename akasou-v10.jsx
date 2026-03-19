@@ -292,11 +292,20 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
   const partName = comp.part_name || "";
   if (partName.includes("扉") || partName.includes("ドア")) return null;
 
-  // 棚板は平面図では前端の横線1本で表現（塗りつぶしは外枠を隠す）
+  // 棚板は平面図では前端・後端・中央の破線で表現（塗りつぶしは外枠を隠す）
   const isShelf = partName.includes("棚");
   if (isShelf) {
     if (pass === "fill") return null; // 塗りなし
-    return <line x1={px} y1={py} x2={px+w} y2={py} stroke="#555" strokeWidth={0.8} strokeDasharray="4,2"/>;
+    const lineStyle = { stroke:"#666", strokeWidth:0.8, strokeDasharray:"4,2" };
+    return <g>
+      {/* 前端線 */}
+      <line x1={px} y1={py} x2={px+w} y2={py} {...lineStyle}/>
+      {/* 後端線 */}
+      <line x1={px} y1={py+d} x2={px+w} y2={py+d} {...lineStyle}/>
+      {/* 左右の端線（棚板の奥行き範囲を示す） */}
+      <line x1={px} y1={py} x2={px} y2={py+d} stroke="#666" strokeWidth={0.5} strokeDasharray="2,2"/>
+      <line x1={px+w} y1={py} x2={px+w} y2={py+d} stroke="#666" strokeWidth={0.5} strokeDasharray="2,2"/>
+    </g>;
   }
 
   const fill   = pass==="fill"   ? "#e8e0d0" : "none";
@@ -967,7 +976,10 @@ function PartDrawings({ data }) {
         const drawW = CARD_W - PAD*2 - DIM_GAP;
         const drawH = CARD_H - PAD*2 - DIM_GAP;
         const sc = Math.min(drawW / Math.max(W,1), drawH / Math.max(H,1)) * 0.82;
-        const pw = W * sc, ph = H * sc;
+        // 最小表示サイズ保証（板厚など極端に薄い部品が棒にならないように）
+        const MIN_PX = 8;
+        const pw = Math.max(W * sc, MIN_PX);
+        const ph = Math.max(H * sc, MIN_PX);
         const ox = PAD + DIM_GAP/2 + (drawW - pw) / 2;
         const oy = PAD + (drawH - ph) / 2;
 
