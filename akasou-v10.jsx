@@ -208,10 +208,9 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
         return <>
           <rect x={px+cp} y={py+cp} width={Math.max(0,w-cp*2)} height={Math.max(0,h-cp*2)}
             fill="none" stroke="#666" strokeWidth={0.8} strokeDasharray="3,2" opacity={0.85}/>
-          {/* 注記は右扉（または旧形式）にのみ表示 */}
+          {/* 注記は右扉（または旧形式）にのみ表示：上端中央に配置 */}
           {!isLeftDoor && <>
-            <line x1={px+w} y1={py+cp} x2={px+w+10} y2={py+cp} stroke="#666" strokeWidth={0.5}/>
-            <text x={px+w+12} y={py+cp+3} fill="#666" fontSize={7.5} fontFamily={MONO}>ちり {chiri}</text>
+            <text x={px+w/2} y={py-4} textAnchor="middle" fill="#888" fontSize={7} fontFamily={MONO}>ちり {chiri}mm</text>
           </>}
         </>;
       })()}
