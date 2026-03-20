@@ -1047,9 +1047,9 @@ function PartDrawings({ data }) {
                 isDoor={isDoor} isDrawer={isDrawer} grain={grain} id={`f${idx}`}/>
               {/* 区切り */}
               <div style={{width:1,background:C.border,alignSelf:"stretch",marginTop:16}}/>
-              {/* 側面図：D×H（厚みがわかる） */}
-              <DrawView W={D} H={H} label={`側面 D×H（厚み）`} fill={fill}
-                isDoor={false} isDrawer={false} grain={null} id={`s${idx}`}/>
+              {/* 平面図：W×D（木取りに必要な面積がわかる） */}
+              <DrawView W={W} H={D} label={`平面 W×D`} fill={fill}
+                isDoor={false} isDrawer={false} grain={grain} id={`p${idx}`}/>
             </div>
 
             {/* 寸法テキスト */}
