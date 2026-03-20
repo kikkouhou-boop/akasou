@@ -1028,6 +1028,16 @@ function PartDrawings({ data }) {
         const fill = isDrawer ? "#cdd4c0" : "#e0d8c8";
         const grain = comp.grain_direction;
 
+        // 3辺を大きい順に並べて、上位2辺が主面・最小が厚み
+        const dims = [
+          {label:"W", val:W},
+          {label:"H", val:H},
+          {label:"D", val:D},
+        ].sort((a,b) => b.val - a.val);
+        const mainA = dims[0]; // 主面の長辺
+        const mainB = dims[1]; // 主面の短辺
+        const thick  = dims[2]; // 厚み
+
         return (
           <div key={idx} style={{
             background:C.panel, border:`1px solid ${C.border2}`,
@@ -1042,14 +1052,16 @@ function PartDrawings({ data }) {
 
             {/* 2ビュー横並び */}
             <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
-              {/* 正面図：W×H */}
-              <DrawView W={W} H={H} label={`正面 W×H`} fill={fill}
-                isDoor={isDoor} isDrawer={isDrawer} grain={grain} id={`f${idx}`}/>
+              {/* 主面：最大の2辺 */}
+              <DrawView W={mainA.val} H={mainB.val}
+                label={`主面 ${mainA.label}×${mainB.label}`}
+                fill={fill} isDoor={isDoor} isDrawer={isDrawer} grain={grain} id={`f${idx}`}/>
               {/* 区切り */}
               <div style={{width:1,background:C.border,alignSelf:"stretch",marginTop:16}}/>
-              {/* 平面図：W×D（上から見た形。大きい方を横に配置） */}
-              <DrawView W={Math.max(W,D)} H={Math.min(W,D)} label={`平面 W×D`} fill={fill}
-                isDoor={false} isDrawer={false} grain={grain} id={`p${idx}`}/>
+              {/* 厚み：最小辺 */}
+              <DrawView W={mainA.val} H={thick.val}
+                label={`厚み ${thick.label}=${Math.round(thick.val)}mm`}
+                fill={fill} isDoor={false} isDrawer={false} grain={null} id={`t${idx}`}/>
             </div>
 
             {/* 寸法テキスト */}
