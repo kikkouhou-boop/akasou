@@ -956,100 +956,104 @@ function Interactive3D({ data }) {
 }
 
 // ══════════════════════════════════════════════════
-// 部品図（各部品の正面・寸法を一覧表示）
+// 部品図（正面図＋側面図のペアで表示）
 // ══════════════════════════════════════════════════
 function PartDrawings({ data }) {
   if (!data?.components?.length) return <div style={{padding:40,textAlign:"center",color:C.sub}}>部品情報がありません</div>;
 
   const comps = data.components.filter(c => !c.is_hidden && (c.width||0) > 0 && (c.height||0) > 0);
-  const CARD_W = 200, CARD_H = 180, PAD = 16, DIM_GAP = 28;
+
+  // 1ビューのSVGを描画するヘルパー
+  const DrawView = ({ W, H, label, fill, isDoor, isDrawer, grain, id }) => {
+    const SVG_W = 160, SVG_H = 150, PAD = 14, DIM_H = 22, DIM_V = 24;
+    const drawW = SVG_W - PAD*2 - DIM_V;
+    const drawH = SVG_H - PAD*2 - DIM_H;
+    const sc = Math.min(drawW / Math.max(W,1), drawH / Math.max(H,1)) * 0.80;
+    const MIN_PX = 6;
+    const pw = Math.max(W * sc, MIN_PX);
+    const ph = Math.max(H * sc, MIN_PX);
+    const ox = PAD + (drawW - pw) / 2;
+    const oy = PAD + DIM_H/2 + (drawH - ph) / 2;
+    const markId = `arr-${id}`;
+
+    return (
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:8,color:C.sub,textAlign:"center",marginBottom:2}}>{label}</div>
+        <svg width="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{display:"block"}}>
+          <defs>
+            <marker id={markId} viewBox="0 0 6 6" refX="3" refY="3" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+              <path d="M1 1L5 3L1 5" fill="none" stroke={C.dim} strokeWidth="1"/>
+            </marker>
+          </defs>
+          {/* 本体 */}
+          <rect x={ox} y={oy} width={Math.max(pw,1)} height={Math.max(ph,1)} fill={fill} stroke="#555" strokeWidth={0.8}/>
+          {/* 木目 */}
+          {grain && (() => {
+            const dir = grain === "縦目" ? "v" : "h";
+            return Array.from({length:3},(_,i) => dir==="h"
+              ? <line key={i} x1={ox+2} y1={oy+ph/4*(i+1)} x2={ox+pw-2} y2={oy+ph/4*(i+1)} stroke="#b5882a" strokeWidth={0.4} strokeDasharray="3,2" opacity={0.5}/>
+              : <line key={i} x1={ox+pw/4*(i+1)} y1={oy+2} x2={ox+pw/4*(i+1)} y2={oy+ph-2} stroke="#b5882a" strokeWidth={0.4} strokeDasharray="3,2" opacity={0.5}/>
+            );
+          })()}
+          {/* 扉の対角線 */}
+          {isDoor && <>
+            <line x1={ox} y1={oy} x2={ox+pw} y2={oy+ph} stroke="#888" strokeWidth={0.6}/>
+            <line x1={ox+pw} y1={oy} x2={ox} y2={oy+ph} stroke="#888" strokeWidth={0.6}/>
+          </>}
+          {/* 引き出しの横線 */}
+          {isDrawer && [0.3,0.5,0.7].map((r,i)=>
+            <line key={i} x1={ox+4} y1={oy+ph*r} x2={ox+pw-4} y2={oy+ph*r} stroke="#888" strokeWidth={0.5}/>
+          )}
+          {/* 幅寸法（上） */}
+          <line x1={ox} y1={oy-3} x2={ox} y2={oy-9} stroke={C.dim} strokeWidth={0.5}/>
+          <line x1={ox+pw} y1={oy-3} x2={ox+pw} y2={oy-9} stroke={C.dim} strokeWidth={0.5}/>
+          <line x1={ox} y1={oy-7} x2={ox+pw} y2={oy-7} stroke={C.dim} strokeWidth={0.5} markerStart={`url(#${markId})`} markerEnd={`url(#${markId})`}/>
+          <text x={ox+pw/2} y={oy-10} textAnchor="middle" fill={C.dim} fontSize={7.5} fontFamily={MONO} fontWeight="600">{Math.round(W)}</text>
+          {/* 高さ寸法（右） */}
+          <line x1={ox+pw+3} y1={oy} x2={ox+pw+9} y2={oy} stroke={C.dim} strokeWidth={0.5}/>
+          <line x1={ox+pw+3} y1={oy+ph} x2={ox+pw+9} y2={oy+ph} stroke={C.dim} strokeWidth={0.5}/>
+          <line x1={ox+pw+7} y1={oy} x2={ox+pw+7} y2={oy+ph} stroke={C.dim} strokeWidth={0.5}/>
+          <text x={ox+pw+10} y={oy+ph/2+3} fill={C.dim} fontSize={7.5} fontFamily={MONO} fontWeight="600">{Math.round(H)}</text>
+        </svg>
+      </div>
+    );
+  };
 
   return (
-    <div style={{display:"flex",flexWrap:"wrap",gap:16,padding:4}}>
+    <div style={{display:"flex",flexWrap:"wrap",gap:12,padding:4}}>
       {comps.map((comp, idx) => {
         const W = +(comp.width||0), H = +(comp.height||0), D = +(comp.depth||0);
-        const isDoor = (comp.part_name||"").includes("扉");
+        const isDoor   = (comp.part_name||"").includes("扉");
         const isDrawer = (comp.part_name||"").includes("引き出し");
-
-        // SVGエリア内でのスケール計算
-        const drawW = CARD_W - PAD*2 - DIM_GAP;
-        const drawH = CARD_H - PAD*2 - DIM_GAP;
-        const sc = Math.min(drawW / Math.max(W,1), drawH / Math.max(H,1)) * 0.82;
-        // 最小表示サイズ保証（板厚など極端に薄い部品が棒にならないように）
-        const MIN_PX = 8;
-        const pw = Math.max(W * sc, MIN_PX);
-        const ph = Math.max(H * sc, MIN_PX);
-        const ox = PAD + DIM_GAP/2 + (drawW - pw) / 2;
-        const oy = PAD + (drawH - ph) / 2;
-
-        const fill = isDoor ? "#e0d8c8" : isDrawer ? "#cdd4c0" : "#e0d8c8";
+        const fill = isDrawer ? "#cdd4c0" : "#e0d8c8";
+        const grain = comp.grain_direction;
 
         return (
           <div key={idx} style={{
             background:C.panel, border:`1px solid ${C.border2}`,
-            borderRadius:8, padding:"10px 10px 6px",
-            width:CARD_W, flexShrink:0,
+            borderRadius:8, padding:"10px 12px 8px",
+            width:360, flexShrink:0,
           }}>
             {/* 部品名 */}
-            <div style={{fontSize:11,fontWeight:700,color:C.accent,marginBottom:6,
+            <div style={{fontSize:11,fontWeight:700,color:C.accent,marginBottom:8,
               whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
               {String(idx+1).padStart(2,"0")}. {comp.part_name}
             </div>
 
-            {/* SVG図 */}
-            <svg width={CARD_W} height={CARD_H} style={{display:"block"}}>
-              {/* 部品の矩形 */}
-              <rect x={ox} y={oy} width={Math.max(pw,1)} height={Math.max(ph,1)}
-                fill={fill} stroke="#555" strokeWidth={0.8}/>
-
-              {/* 木目 */}
-              {comp.grain_direction && (() => {
-                const dir = comp.grain_direction === "縦目" ? "v" : "h";
-                const n = 4;
-                return Array.from({length:n-1},(_,i) => dir==="h"
-                  ? <line key={i} x1={ox+2} y1={oy+ph/n*(i+1)} x2={ox+pw-2} y2={oy+ph/n*(i+1)}
-                      stroke="#b5882a" strokeWidth={0.4} strokeDasharray="3,2" opacity={0.5}/>
-                  : <line key={i} x1={ox+pw/n*(i+1)} y1={oy+2} x2={ox+pw/n*(i+1)} y2={oy+ph-2}
-                      stroke="#b5882a" strokeWidth={0.4} strokeDasharray="3,2" opacity={0.5}/>
-                );
-              })()}
-
-              {/* 扉の対角線 */}
-              {isDoor && <>
-                <line x1={ox} y1={oy} x2={ox+pw} y2={oy+ph} stroke="#888" strokeWidth={0.6}/>
-                <line x1={ox+pw} y1={oy} x2={ox} y2={oy+ph} stroke="#888" strokeWidth={0.6}/>
-              </>}
-
-              {/* 引き出しの横線 */}
-              {isDrawer && [0.3,0.5,0.7].map((r,i)=>
-                <line key={i} x1={ox+4} y1={oy+ph*r} x2={ox+pw-4} y2={oy+ph*r}
-                  stroke="#888" strokeWidth={0.5}/>
-              )}
-
-              {/* 幅寸法（上） */}
-              <line x1={ox} y1={oy-4} x2={ox} y2={oy-10} stroke={C.dim} strokeWidth={0.5}/>
-              <line x1={ox+pw} y1={oy-4} x2={ox+pw} y2={oy-10} stroke={C.dim} strokeWidth={0.5}/>
-              <line x1={ox} y1={oy-8} x2={ox+pw} y2={oy-8} stroke={C.dim} strokeWidth={0.5}
-                markerStart="url(#pd-arr)" markerEnd="url(#pd-arr)"/>
-              <text x={ox+pw/2} y={oy-12} textAnchor="middle"
-                fill={C.dim} fontSize={8} fontFamily={MONO} fontWeight="600">{Math.round(W)}</text>
-
-              {/* 高さ寸法（右） */}
-              <line x1={ox+pw+4} y1={oy} x2={ox+pw+10} y2={oy} stroke={C.dim} strokeWidth={0.5}/>
-              <line x1={ox+pw+4} y1={oy+ph} x2={ox+pw+10} y2={oy+ph} stroke={C.dim} strokeWidth={0.5}/>
-              <line x1={ox+pw+8} y1={oy} x2={ox+pw+8} y2={oy+ph} stroke={C.dim} strokeWidth={0.5}/>
-              <text x={ox+pw+11} y={oy+ph/2+3} fill={C.dim} fontSize={8} fontFamily={MONO} fontWeight="600">{Math.round(H)}</text>
-
-              {/* 矢印マーカー定義 */}
-              <defs>
-                <marker id="pd-arr" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-                  <path d="M1 1L5 3L1 5" fill="none" stroke={C.dim} strokeWidth="1"/>
-                </marker>
-              </defs>
-            </svg>
+            {/* 2ビュー横並び */}
+            <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+              {/* 正面図：W×H */}
+              <DrawView W={W} H={H} label={`正面 W×H`} fill={fill}
+                isDoor={isDoor} isDrawer={isDrawer} grain={grain} id={`f${idx}`}/>
+              {/* 区切り */}
+              <div style={{width:1,background:C.border,alignSelf:"stretch",marginTop:16}}/>
+              {/* 側面図：D×H（厚みがわかる） */}
+              <DrawView W={D} H={H} label={`側面 D×H（厚み）`} fill={fill}
+                isDoor={false} isDrawer={false} grain={null} id={`s${idx}`}/>
+            </div>
 
             {/* 寸法テキスト */}
-            <div style={{fontSize:9,color:C.sub,fontFamily:MONO,marginTop:4,textAlign:"center"}}>
+            <div style={{fontSize:9,color:C.sub,fontFamily:MONO,marginTop:6,textAlign:"center"}}>
               W{Math.round(W)} × H{Math.round(H)}{D > 0 ? ` × D${Math.round(D)}` : ""} mm
             </div>
           </div>
