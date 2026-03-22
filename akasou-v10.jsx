@@ -179,7 +179,7 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
 
   const fill   = pass==="fill"   ? (isDrawer?"#cdd4c0" : "#e0d8c8") : "none";
   const stroke = pass==="stroke" ? "#333" : "none";
-  const sw     = pass==="stroke" ? 0.8 : 0;
+  const sw     = pass==="stroke" ? 0.5 : 0;
 
   if (shape==="cylinder") {
     const r = (W/2)*sc;
@@ -258,7 +258,7 @@ function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
 
   const fill   = pass==="fill"   ? "#d8d0c0" : "none";
   const stroke = pass==="stroke" ? "#333"    : "none";
-  const sw = pass==="stroke" ? 0.8 : 0;
+  const sw = pass==="stroke" ? 0.5 : 0;
 
   if (shape==="cylinder") {
     return <g>
@@ -305,7 +305,7 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
 
   const fill   = pass==="fill"   ? "#e8e0d0" : "none";
   const stroke = pass==="stroke" ? "#333"    : "none";
-  const sw = pass==="stroke" ? 0.8 : 0;
+  const sw = pass==="stroke" ? 0.5 : 0;
 
   if (shape==="cylinder") {
     const r=(W/2)*sc;
@@ -416,9 +416,9 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
       xmlns="http://www.w3.org/2000/svg">
       <rect width={SVG_W} height={SVG_H} fill="white"/>
       <defs>
-        <clipPath id="clipFront"><rect x={fOX} y={fOY} width={fW} height={fH}/></clipPath>
-        <clipPath id="clipSide"><rect x={sOX} y={sOY} width={sW} height={sH}/></clipPath>
-        <clipPath id="clipTop"><rect x={tOX} y={tOY} width={tW} height={tD}/></clipPath>
+        <clipPath id="clipFront"><rect x={fOX+1} y={fOY+1} width={fW-2} height={fH-2}/></clipPath>
+        <clipPath id="clipSide"><rect x={sOX+1} y={sOY+1} width={sW-2} height={sH-2}/></clipPath>
+        <clipPath id="clipTop"><rect x={tOX+1} y={tOY+1} width={tW-2} height={tD-2}/></clipPath>
       </defs>
       <rect x={14} y={10} width={SVG_W-28} height={SVG_H-TBH-10} fill="none" stroke="#ddd" strokeWidth={0.5}/>
       <rect x={20} y={16} width={SVG_W-40} height={SVG_H-TBH-20} fill="none" stroke="#333" strokeWidth={0.8}/>
