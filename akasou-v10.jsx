@@ -291,19 +291,15 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
   const partName = comp.part_name || "";
   if (partName.includes("扉") || partName.includes("ドア")) return null;
 
-  // 棚板は平面図では前端・後端・中央の破線で表現（塗りつぶしは外枠を隠す）
+  // 棚板は平面図では中央に一点鎖線1本で表現（JIS製図：内部水平部材）
   const isShelf = partName.includes("棚");
   if (isShelf) {
-    if (pass === "fill") return null; // 塗りなし
-    const lineStyle = { stroke:"#666", strokeWidth:0.8, strokeDasharray:"4,2" };
+    if (pass === "fill") return null;
+    // 棚板の奥行き中央位置に1本線（外枠との重なりを避ける）
+    const cy = py + d / 2;
     return <g>
-      {/* 前端線 */}
-      <line x1={px} y1={py} x2={px+w} y2={py} {...lineStyle}/>
-      {/* 後端線 */}
-      <line x1={px} y1={py+d} x2={px+w} y2={py+d} {...lineStyle}/>
-      {/* 左右の端線（棚板の奥行き範囲を示す） */}
-      <line x1={px} y1={py} x2={px} y2={py+d} stroke="#666" strokeWidth={0.5} strokeDasharray="2,2"/>
-      <line x1={px+w} y1={py} x2={px+w} y2={py+d} stroke="#666" strokeWidth={0.5} strokeDasharray="2,2"/>
+      <line x1={px} y1={cy} x2={px+w} y2={cy}
+        stroke="#555" strokeWidth={0.9} strokeDasharray="8,3,2,3"/>
     </g>;
   }
 
@@ -1050,7 +1046,7 @@ function PartDrawings({ data }) {
               {String(idx+1).padStart(2,"0")}. {comp.part_name}
             </div>
 
-            {/* 2ビュー横並び */}
+            {/* 2ビュー横並び（上段） */}
             <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
               {/* 主面：最大の2辺 */}
               <DrawView W={mainA.val} H={mainB.val}
@@ -1063,6 +1059,14 @@ function PartDrawings({ data }) {
                 label={`厚み ${thick.label}=${Math.round(thick.val)}mm`}
                 fill={fill} isDoor={false} isDrawer={false} grain={null} id={`t${idx}`}/>
             </div>
+
+            {/* 区切り線 */}
+            <div style={{height:1,background:C.border,margin:"6px 0"}}/>
+
+            {/* 小口図（下段）：主面の下に横から見た厚み */}
+            <DrawView W={mainA.val} H={thick.val}
+              label={`小口（${mainA.label}方向から見た厚み）`}
+              fill={fill} isDoor={false} isDrawer={false} grain={grain} id={`e${idx}`}/>
 
             {/* 寸法テキスト */}
             <div style={{fontSize:9,color:C.sub,fontFamily:MONO,marginTop:6,textAlign:"center"}}>
@@ -1778,103 +1782,58 @@ function EasyEditor({ data, onApply }) {
 // Step2: JSON生成（収納BOX・扉・引き出し対応）
 // ══════════════════════════════════════════════════
 
-// Step1：観察プロンプト（980誤読修正・扉強化版）
-const PROMPT_OBSERVE = `このスケッチ画像を観察してください。職人が描いたアイソメ図（立体スケッチ）の場合があります。
+// Step1：観察プロンプト（構造化フォーマット固定版・再現性最優先）
+const PROMPT_OBSERVE = `このスケッチ画像から数値と情報を抽出してください。
+解釈や推測は不要です。画像に書かれた数字と記号をそのまま読み取ってください。
 
-【最優先①：タイトル・品名を読む】
-画像の上部や余白に書かれた文字（例：「収納BOXの図面」）を全て読み取ってください。
+【読み取りルール】
+- 画像に書かれた数字を全て読む（改ざん・丸め禁止）
+- 「9」を「8」「0」と読まない。3桁の数字は必ず3桁で読む
+- アイソメ図（立体スケッチ）の場合：水平2方向の大きい数=幅、小さい数=奥行き、縦方向=高さ
+- 不明な項目は「不明」と書く
 
-【最優先②：全ての数字を正確に読む】
-画像に書かれた数字を全て読み取り、リストアップしてください。
-★手書き数字の読み間違いに注意：
-  - 「9」を「8」と読まない（例：「980」→ 正しくは「980」。「880」や「800」ではない）
-  - 「9」を「0」と読まない
-  - 3桁の数字は必ず3桁のまま読む（「980」を「80」や「800」にしない）
+【回答は必ずこの形式のみで答える。他の文章は一切書かない】
+タイトル：
+幅(W)：mm
+高さ(H)：mm
+奥行き(D)：mm
+板厚：mm
+扉：あり／なし／不明
+棚：あり／なし／不明
+引き出し：あり／なし／不明`;
 
-【アイソメ図の寸法の割り当て】
-水平方向に2つの数字がある場合：
-- より大きい数字 → 幅（W）
-- より小さい数字 → 奥行き（D）
-垂直方向（縦）の数字 → 高さ（H）
-小さい数字（10〜30程度）→ 板厚
-
-【回答形式（必ずこの形式で答える）】
-タイトル：〇〇
-家具の種類：〇〇
-数字リスト：（読み取った数字を全て、改ざんせず列記）
-幅(W)：〇〇mm
-高さ(H)：〇〇mm
-奥行き(D)：〇〇mm
-板厚：〇〇mm
-扉：あり／なし
-棚：あり／なし
-引き出し：あり／なし
-
-見えないものは「不明」と書いてください。`;
-
-// Step2：JSON生成プロンプト（寸法割り当て・扉生成強化版）
-const makePromptJSON = (observation) => `以下の観察記録から家具のJSONを生成してください。JSONのみ返答（前後に説明文不要）。
+// Step2：JSON生成プロンプト（スキーマ完全固定版）
+const makePromptJSON = (observation) => `以下の観察記録から家具JSONを生成してください。
+JSONブロックのみ返答。説明文・コードブロック記号は不要。
 
 【観察記録】
 ${observation}
 
-【★寸法の割り当てルール（最重要）】
-観察記録に「幅(W)：〇〇」「高さ(H)：〇〇」「奥行き(D)：〇〇」と書かれていれば、必ずその数値を使う。
-- overall_dimensions.width  = 観察記録の「幅(W)」の数値
-- overall_dimensions.height = 観察記録の「高さ(H)」の数値
-- overall_dimensions.depth  = 観察記録の「奥行き(D)」の数値
-★数値を勝手に変えたり、幅と奥行きを入れ替えたりしてはいけない
+【寸法の割り当て（絶対遵守）】
+- overall_dimensions.width  = 観察記録の「幅(W)」の数値をそのまま使う
+- overall_dimensions.height = 観察記録の「高さ(H)」の数値をそのまま使う
+- overall_dimensions.depth  = 観察記録の「奥行き(D)」の数値をそのまま使う
+- 数値を変更・丸め・入れ替え禁止
 
-【★扉の生成ルール】
-観察記録に「扉：あり」とある場合、必ずcomponentsに扉を追加する。
-扉のpart_nameは必ず「扉」を含める（例：「扉」「左扉」「右扉」）
-扉の配置：z=0（前面）、widthは内寸、heightは内寸と同じ
+【部品の座標ルール（板厚=t として計算）】
+収納BOX（W=外寸幅, H=外寸高さ, D=外寸奥行き, t=板厚）の場合：
+- 天板：   width=W,   height=t,  depth=D,  position={x:0,   y:H-t, z:0}
+- 底板：   width=W,   height=t,  depth=D,  position={x:0,   y:0,   z:0}
+- 左側板： width=t,   height=H,  depth=D,  position={x:0,   y:0,   z:0}
+- 右側板： width=t,   height=H,  depth=D,  position={x:W-t, y:0,   z:0}
+- 背板：   width=W-t*2, height=H-t*2, depth=t, position={x:t, y:t, z:D-t}
+- 扉：     width=W-t*2, height=H-t*2, depth=t, position={x:t, y:t, z:0}
+- 棚板：   width=W-t*2, height=t,  depth=D-t*2, position={x:t, y:H/2, z:t}
 
-【座標ルール】
-- 原点(0,0,0) = 家具の左・下・手前の角
-- x軸=右（幅）、y軸=上（高さ）、z軸=奥（奥行き）
-- positionは各部品の「左下手前の角」の座標
-
-【収納ボックスのお手本（扉あり）】W=980, H=600, D=450, 板厚20の場合：
-  天板:   {part_name:"天板",   width:980, height:20,  depth:450, position:{x:0,   y:580, z:0}}
-  底板:   {part_name:"底板",   width:980, height:20,  depth:450, position:{x:0,   y:0,   z:0}}
-  左側板: {part_name:"左側板", width:20,  height:600, depth:450, position:{x:0,   y:0,   z:0}}
-  右側板: {part_name:"右側板", width:20,  height:600, depth:450, position:{x:960, y:0,   z:0}}
-  背板:   {part_name:"背板",   width:940, height:560, depth:20,  position:{x:20,  y:20,  z:430}}
-  扉:     {part_name:"扉",     width:940, height:560, depth:20,  position:{x:20,  y:20,  z:0}}
-
-【テーブルのお手本】W=1400, H=720, D=840, 脚60角の場合：
-  前脚左: {part_name:"前脚左", width:60,  height:680, depth:60,  position:{x:60,   y:0,   z:60}}
-  前脚右: {part_name:"前脚右", width:60,  height:680, depth:60,  position:{x:1280, y:0,   z:60}}
-  後脚左: {part_name:"後脚左", width:60,  height:680, depth:60,  position:{x:60,   y:0,   z:720}}
-  後脚右: {part_name:"後脚右", width:60,  height:680, depth:60,  position:{x:1280, y:0,   z:720}}
-  天板:   {part_name:"天板",   width:1400,height:40,  depth:840, position:{x:0,    y:680, z:0}}
-  幕板前: {part_name:"幕板前", width:1280,height:80,  depth:30,  position:{x:60,   y:600, z:60}}
-
-【ルール】
-- 脚のwidthとdepthは必ず同じ値（正方形断面）
-- 角材の脚はshape:"rect"、丸脚はshape:"cylinder"
-- 迷ったらshape:"rect"
-- 扉のdepth（板厚）は20。position z=0（前面）に配置する
-- 扉のwidthは「外寸幅 − 板厚×2」、heightは「外寸高さ − 板厚×2」
-- 収納BOXの部品は「天板・底板・左側板・右側板・背板」の5点が基本。扉・棚は必要な場合のみ追加
-- ★重要：スケッチに描かれていない部品（台・台輪・幕板など）は追加しない
-- ★重要：全ての部品のposition座標は overall_dimensions の範囲内に収めること
-- ★重要：天板・底板のwidthは必ず overall_dimensions.width と同じ値にする
-- ★重要：左側板・右側板のheightは必ず overall_dimensions.height と同じ値にする
-- ★重要：右側板のposition.xは「overall_dimensions.width − 板厚」にする
-- ★重要：天板のposition.yは「overall_dimensions.height − 板厚」にする
-- 板厚は全部品で統一する（デフォルト20mm）
-
-出力形式：
+【出力JSONスキーマ（このフォーマット厳守）】
 {
-  "furniture_name": "名称",
+  "furniture_name": "文字列",
   "material": "",
   "finish": "",
   "overall_dimensions": { "width": 数値, "height": 数値, "depth": 数値 },
   "components": [
     {
-      "part_name": "部品名",
+      "part_name": "文字列",
       "shape": "rect",
       "width": 数値,
       "height": 数値,
@@ -2225,6 +2184,7 @@ export default function App() {
           body: JSON.stringify({
             model: "claude-sonnet-4-20250514",
             max_tokens: maxTokens,
+            temperature: 0,
             messages,
           })
         });
