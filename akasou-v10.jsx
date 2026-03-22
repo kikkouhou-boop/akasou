@@ -2086,7 +2086,7 @@ export default function App() {
 
     const fixed = {
       ...parsed,
-      components: parsed.components.map(comp => {
+      components: parsed.components.flatMap(comp => {
         const name = comp.part_name || "";
         const isLeg = name.includes("脚") || name.toLowerCase().includes("leg");
 
@@ -2126,10 +2126,25 @@ export default function App() {
             position: { ...comp.position, x: OW - tw } };
         }
 
-        // 扉：幅=OW-板厚×2、高さ=OH-板厚×2、z=0
-        if (name.includes("扉") && OW > 0 && OH > 0) {
+        // 扉：「左扉」「右扉」はそのまま座標補正のみ
+        if ((name.includes("左扉") || name.includes("右扉")) && OW > 0 && OH > 0) {
+          const tw = 20;
+          const halfW = Math.floor((OW - tw*2) / 2);
+          const isRight = name.includes("右扉");
+          return { ...comp,
+            width: halfW,
+            height: OH - tw*2,
+            depth: tw,
+            chiri: comp.chiri ?? 3,
+            position: { x: isRight ? tw + halfW : tw, y: tw, z: 0 }
+          };
+        }
+
+        // 扉（旧形式）：左扉・右扉ペアに展開フラグを立てる（後でflatMapで展開）
+        if (name === "扉" && OW > 0 && OH > 0) {
           const tw = 20;
           return { ...comp,
+            _expandToPair: true,  // ペア展開マーカー
             width: OW - tw*2,
             height: OH - tw*2,
             depth: tw,
@@ -2149,6 +2164,16 @@ export default function App() {
         }
 
         return comp;
+      }).flatMap(comp => {
+        // 旧形式「扉」をペアに展開
+        if (comp._expandToPair) {
+          const { _expandToPair, ...rest } = comp;
+          const tw = 20;
+          const OW2 = parsed.overall_dimensions?.width || 0;
+          const OH2 = parsed.overall_dimensions?.height || 0;
+          return makeDoorPair(OW2, OH2, parsed.overall_dimensions?.depth||0, rest.chiri ?? 3);
+        }
+        return [comp];
       })
     };
     return fixed;
