@@ -959,23 +959,22 @@ function PartDrawings({ data }) {
 
   const comps = data.components.filter(c => !c.is_hidden && (c.width||0) > 0 && (c.height||0) > 0);
 
-  // 1ビューのSVGを描画するヘルパー
-  const DrawView = ({ W, H, label, fill, isDoor, isDrawer, grain, id }) => {
-    const SVG_W = 160, SVG_H = 150, PAD = 14, DIM_H = 22, DIM_V = 24;
-    const drawW = SVG_W - PAD*2 - DIM_V;
-    const drawH = SVG_H - PAD*2 - DIM_H;
-    const sc = Math.min(drawW / Math.max(W,1), drawH / Math.max(H,1)) * 0.80;
-    const MIN_PX = 6;
-    const pw = Math.max(W * sc, MIN_PX);
-    const ph = Math.max(H * sc, MIN_PX);
-    const ox = PAD + (drawW - pw) / 2;
-    const oy = PAD + DIM_H/2 + (drawH - ph) / 2;
+  // 1ビューのSVGを描画するヘルパー（scを外から受け取り比率統一）
+  const DrawView = ({ W, H, label, fill, isDoor, isDrawer, grain, id, sc: scOverride }) => {
+    const PAD = 14, DIM_H = 20, DIM_V = 22;
+    const MIN_PX = 4;
+    const pw = Math.max((scOverride || 1) * W, MIN_PX);
+    const ph = Math.max((scOverride || 1) * H, MIN_PX);
+    const SVG_W = pw + PAD*2 + DIM_V;
+    const SVG_H = ph + PAD*2 + DIM_H;
+    const ox = PAD;
+    const oy = PAD + DIM_H;
     const markId = `arr-${id}`;
 
     return (
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:8,color:C.sub,textAlign:"center",marginBottom:2}}>{label}</div>
-        <svg width="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{display:"block"}}>
+      <div style={{minWidth:0}}>
+        <div style={{fontSize:8,color:C.sub,marginBottom:2}}>{label}</div>
+        <svg width={SVG_W} height={SVG_H} style={{display:"block"}}>
           <defs>
             <marker id={markId} viewBox="0 0 6 6" refX="3" refY="3" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
               <path d="M1 1L5 3L1 5" fill="none" stroke={C.dim} strokeWidth="1"/>
@@ -1034,40 +1033,46 @@ function PartDrawings({ data }) {
         const mainB = dims[1]; // 主面の短辺
         const thick  = dims[2]; // 厚み
 
+        // 共通スケール：主面がカード内に収まる最大サイズを基準に計算
+        // 主面エリア：幅約220px・高さ約160px を目安
+        const MAIN_MAX_W = 220, MAIN_MAX_H = 160;
+        const sc = Math.min(MAIN_MAX_W / Math.max(mainA.val, 1), MAIN_MAX_H / Math.max(mainB.val, 1)) * 0.85;
+
         return (
           <div key={idx} style={{
             background:C.panel, border:`1px solid ${C.border2}`,
             borderRadius:8, padding:"10px 12px 8px",
-            width:360, flexShrink:0,
+            width:"auto", flexShrink:0, display:"inline-block",
           }}>
             {/* 部品名 */}
             <div style={{fontSize:11,fontWeight:700,color:C.accent,marginBottom:8,
-              whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+              whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:400}}>
               {String(idx+1).padStart(2,"0")}. {comp.part_name}
             </div>
 
             {/* メインレイアウト：左列（主面＋小口）＋ 右列（厚み縦棒） */}
-            <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+            <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
 
-              {/* 左列：主面の下に小口を積む */}
-              <div style={{flex:1,display:"flex",flexDirection:"column",gap:4}}>
-                {/* 主面 */}
+              {/* 左列：主面の下に小口を積む（同じスケール） */}
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
                 <DrawView W={mainA.val} H={mainB.val}
                   label={`主面 ${mainA.label}×${mainB.label}`}
-                  fill={fill} isDoor={isDoor} isDrawer={isDrawer} grain={grain} id={`f${idx}`}/>
-                {/* 小口（主面の真下・同じ幅） */}
+                  fill={fill} isDoor={isDoor} isDrawer={isDrawer} grain={grain}
+                  id={`f${idx}`} sc={sc}/>
                 <DrawView W={mainA.val} H={thick.val}
                   label={`小口 ${thick.label}=${Math.round(thick.val)}mm`}
-                  fill={fill} isDoor={false} isDrawer={false} grain={grain} id={`e${idx}`}/>
+                  fill={fill} isDoor={false} isDrawer={false} grain={grain}
+                  id={`e${idx}`} sc={sc}/>
               </div>
 
               {/* 区切り */}
-              <div style={{width:1,background:C.border,alignSelf:"stretch",marginTop:16}}/>
+              <div style={{width:1,background:C.border,alignSelf:"stretch"}}/>
 
-              {/* 右列：厚み縦棒 */}
+              {/* 右列：厚み縦棒（同じスケール） */}
               <DrawView W={thick.val} H={mainB.val}
                 label={`厚み ${thick.label}=${Math.round(thick.val)}mm`}
-                fill={fill} isDoor={false} isDrawer={false} grain={null} id={`t${idx}`}/>
+                fill={fill} isDoor={false} isDrawer={false} grain={null}
+                id={`t${idx}`} sc={sc}/>
             </div>
 
             {/* 寸法テキスト */}
