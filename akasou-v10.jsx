@@ -204,14 +204,16 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
     {isDoor && pass==="stroke" && <>
       {/* ちり（散り）：内側に破線矩形で段差を表現 */}
       {chiri > 0 && (() => {
-        const cp = Math.max(chiri * sc, 4);
+        const cp = Math.max(chiri * sc, 3);
+        const rw = Math.max(0, w - cp*2);
+        const rh = Math.max(0, h - cp*2);
+        if (rw < 1 || rh < 1) return null;
         return <>
-          <rect x={px+cp} y={py+cp} width={Math.max(0,w-cp*2)} height={Math.max(0,h-cp*2)}
-            fill="none" stroke="#666" strokeWidth={0.8} strokeDasharray="3,2" opacity={0.85}/>
-          {/* 注記は右扉（または旧形式）にのみ表示：上端中央に配置 */}
-          {!isLeftDoor && <>
+          <rect x={px+cp} y={py+cp} width={rw} height={rh}
+            fill="none" stroke="#777" strokeWidth={0.7} strokeDasharray="3,2" opacity={0.8}/>
+          {!isLeftDoor && (
             <text x={px+w/2} y={py-4} textAnchor="middle" fill="#888" fontSize={7} fontFamily={MONO}>ちり {chiri}mm</text>
-          </>}
+          )}
         </>;
       })()}
       {/* 左扉（◁）：右端→左中央 */}
@@ -219,9 +221,9 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
         <line x1={px+w} y1={py}   x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
         <line x1={px+w} y1={py+h} x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
       </>}
-      {/* 右扉（▷）：左端に仕切り線＋左端→右中央 */}
+      {/* 右扉（▷）：左端に仕切り線（はみ出しなし）＋左端→右中央 */}
       {isRightDoor && <>
-        <line x1={px} y1={py-1}   x2={px} y2={py+h+1} stroke="#444" strokeWidth={0.8}/>
+        <line x1={px} y1={py} x2={px} y2={py+h} stroke="#444" strokeWidth={0.8}/>
         <line x1={px} y1={py}   x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
         <line x1={px} y1={py+h} x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
       </>}
@@ -291,16 +293,14 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
   const partName = comp.part_name || "";
   if (partName.includes("扉") || partName.includes("ドア")) return null;
 
-  // 棚板は平面図では中央に一点鎖線1本で表現（JIS製図：内部水平部材）
+  // 棚板は平面図では常に奥行きの中央に一点鎖線1本（位置データに依存しない）
   const isShelf = partName.includes("棚");
   if (isShelf) {
     if (pass === "fill") return null;
-    // 棚板の奥行き中央位置に1本線（外枠との重なりを避ける）
-    const cy = py + d / 2;
-    return <g>
-      <line x1={px} y1={cy} x2={px+w} y2={cy}
-        stroke="#555" strokeWidth={0.9} strokeDasharray="8,3,2,3"/>
-    </g>;
+    // コンポーネントの位置ではなく外枠中央(OD/2)を使用 → 常に安定した位置
+    const cy = oy + (totalD / 2) * sc;
+    return <line x1={ox} y1={cy} x2={ox + (+(comp.width||0)) * sc} y2={cy}
+      stroke="#555" strokeWidth={0.9} strokeDasharray="8,3,2,3"/>;
   }
 
   const fill   = pass==="fill"   ? "#e8e0d0" : "none";
