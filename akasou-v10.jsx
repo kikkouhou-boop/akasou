@@ -1046,27 +1046,29 @@ function PartDrawings({ data }) {
               {String(idx+1).padStart(2,"0")}. {comp.part_name}
             </div>
 
-            {/* 2ビュー横並び（上段） */}
+            {/* メインレイアウト：左列（主面＋小口）＋ 右列（厚み縦棒） */}
             <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
-              {/* 主面：最大の2辺 */}
-              <DrawView W={mainA.val} H={mainB.val}
-                label={`主面 ${mainA.label}×${mainB.label}`}
-                fill={fill} isDoor={isDoor} isDrawer={isDrawer} grain={grain} id={`f${idx}`}/>
+
+              {/* 左列：主面の下に小口を積む */}
+              <div style={{flex:1,display:"flex",flexDirection:"column",gap:4}}>
+                {/* 主面 */}
+                <DrawView W={mainA.val} H={mainB.val}
+                  label={`主面 ${mainA.label}×${mainB.label}`}
+                  fill={fill} isDoor={isDoor} isDrawer={isDrawer} grain={grain} id={`f${idx}`}/>
+                {/* 小口（主面の真下・同じ幅） */}
+                <DrawView W={mainA.val} H={thick.val}
+                  label={`小口 ${thick.label}=${Math.round(thick.val)}mm`}
+                  fill={fill} isDoor={false} isDrawer={false} grain={grain} id={`e${idx}`}/>
+              </div>
+
               {/* 区切り */}
               <div style={{width:1,background:C.border,alignSelf:"stretch",marginTop:16}}/>
-              {/* 厚み（縦棒）：mainB × thick */}
+
+              {/* 右列：厚み縦棒 */}
               <DrawView W={thick.val} H={mainB.val}
                 label={`厚み ${thick.label}=${Math.round(thick.val)}mm`}
                 fill={fill} isDoor={false} isDrawer={false} grain={null} id={`t${idx}`}/>
             </div>
-
-            {/* 区切り線 */}
-            <div style={{height:1,background:C.border,margin:"6px 0"}}/>
-
-            {/* 小口図（下段・横長）：mainA × thick */}
-            <DrawView W={mainA.val} H={thick.val}
-              label={`小口（${thick.label}=${Math.round(thick.val)}mm）`}
-              fill={fill} isDoor={false} isDrawer={false} grain={grain} id={`e${idx}`}/>
 
             {/* 寸法テキスト */}
             <div style={{fontSize:9,color:C.sub,fontFamily:MONO,marginTop:6,textAlign:"center"}}>
