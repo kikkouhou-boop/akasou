@@ -1054,8 +1054,8 @@ function PartDrawings({ data }) {
                 fill={fill} isDoor={isDoor} isDrawer={isDrawer} grain={grain} id={`f${idx}`}/>
               {/* 区切り */}
               <div style={{width:1,background:C.border,alignSelf:"stretch",marginTop:16}}/>
-              {/* 厚み：最小辺 */}
-              <DrawView W={mainA.val} H={thick.val}
+              {/* 厚み（縦棒）：mainB × thick */}
+              <DrawView W={thick.val} H={mainB.val}
                 label={`厚み ${thick.label}=${Math.round(thick.val)}mm`}
                 fill={fill} isDoor={false} isDrawer={false} grain={null} id={`t${idx}`}/>
             </div>
@@ -1063,9 +1063,9 @@ function PartDrawings({ data }) {
             {/* 区切り線 */}
             <div style={{height:1,background:C.border,margin:"6px 0"}}/>
 
-            {/* 小口図（下段）：主面の下に横から見た厚み */}
+            {/* 小口図（下段・横長）：mainA × thick */}
             <DrawView W={mainA.val} H={thick.val}
-              label={`小口（${mainA.label}方向から見た厚み）`}
+              label={`小口（${thick.label}=${Math.round(thick.val)}mm）`}
               fill={fill} isDoor={false} isDrawer={false} grain={grain} id={`e${idx}`}/>
 
             {/* 寸法テキスト */}
