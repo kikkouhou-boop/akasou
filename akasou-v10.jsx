@@ -178,8 +178,9 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   const isDrawer = (part_name||"").includes("引き出し") || (part_name||"").includes("ドロワー");
 
   const fill   = pass==="fill"   ? (isDrawer?"#cdd4c0" : "#e0d8c8") : "none";
-  const stroke = pass==="stroke" ? "#333" : "none";
-  const sw     = pass==="stroke" ? 0.5 : 0;
+  // rect外形線は描かない（外枠のOutlineRectが担う。内部線は別途描画）
+  const stroke = "none";
+  const sw     = 0;
 
   if (shape==="cylinder") {
     const r = (W/2)*sc;
@@ -257,8 +258,8 @@ function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
   if (is_hidden) return null;
 
   const fill   = pass==="fill"   ? "#d8d0c0" : "none";
-  const stroke = pass==="stroke" ? "#333"    : "none";
-  const sw = pass==="stroke" ? 0.5 : 0;
+  const stroke = "none";
+  const sw = 0;
 
   if (shape==="cylinder") {
     return <g>
@@ -304,8 +305,8 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
   }
 
   const fill   = pass==="fill"   ? "#e8e0d0" : "none";
-  const stroke = pass==="stroke" ? "#333"    : "none";
-  const sw = pass==="stroke" ? 0.5 : 0;
+  const stroke = "none";
+  const sw = 0;
 
   if (shape==="cylinder") {
     const r=(W/2)*sc;
@@ -353,13 +354,19 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
   const tOX=MAR+(tZoneW-MAR*2-tW)/2, tOY=MAR+(tZoneH-MAR*1.5-tD)/2;
 
   // 外形線（全体）
-  // 外枠：黒線 + 内側に白帯（部品strokeの重なりを隠す）
-  const OutlineRect = ({x,y,w,h}) => <>
-    {/* 内側白帯（2px幅）：部品strokeが外枠境界に重なっても見えなくする */}
-    <rect x={x+0.5} y={y+0.5} width={w-1} height={h-1} fill="none" stroke="white" strokeWidth={3}/>
-    {/* 外枠本体（黒・1.8px） */}
-    <rect x={x} y={y} width={w} height={h} fill="none" stroke="#111" strokeWidth={1.8}/>
-  </>;
+  // 外枠：白塗り帯4本で内側の部品strokeを完全に隠してから黒枠を描く
+  const OutlineRect = ({x,y,w,h}) => {
+    const bw = 3; // 白帯の幅（内側に3px分塗りつぶす）
+    return <>
+      {/* 白塗り帯4本（上下左右の内側エッジを白で塗りつぶす） */}
+      <rect x={x} y={y} width={w} height={bw} fill="white"/>
+      <rect x={x} y={y+h-bw} width={w} height={bw} fill="white"/>
+      <rect x={x} y={y} width={bw} height={h} fill="white"/>
+      <rect x={x+w-bw} y={y} width={bw} height={h} fill="white"/>
+      {/* 外枠本体（黒・1.8px） */}
+      <rect x={x} y={y} width={w} height={h} fill="none" stroke="#111" strokeWidth={1.8}/>
+    </>;
+  };
 
   // 範囲外の部品を除外（謎の白い部分の防止）
   const validComps = comps.filter(c => {
