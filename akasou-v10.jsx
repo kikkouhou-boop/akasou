@@ -293,14 +293,14 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
   const partName = comp.part_name || "";
   if (partName.includes("扉") || partName.includes("ドア")) return null;
 
-  // 棚板は平面図では常に奥行きの中央に一点鎖線1本（位置データに依存しない）
+  // 棚板は平面図では奥行き中央より少し前面寄りに一点鎖線（外枠との重なりを確実に回避）
   const isShelf = partName.includes("棚");
   if (isShelf) {
     if (pass === "fill") return null;
-    // コンポーネントの位置ではなく外枠中央(OD/2)を使用 → 常に安定した位置
-    const cy = oy + (totalD / 2) * sc;
-    return <line x1={ox} y1={cy} x2={ox + (+(comp.width||0)) * sc} y2={cy}
-      stroke="#555" strokeWidth={0.9} strokeDasharray="8,3,2,3"/>;
+    // OD中央より少し前面寄り（外枠下辺から必ず離れた位置）
+    const cy = oy + (totalD * 0.45) * sc;
+    return <line x1={ox + 2} y1={cy} x2={ox + (+(comp.width||0)) * sc - 2} y2={cy}
+      stroke="#666" strokeWidth={1.0} strokeDasharray="8,3,2,3"/>;
   }
 
   const fill   = pass==="fill"   ? "#e8e0d0" : "none";
@@ -603,20 +603,19 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         return <g>{notes}</g>;
       })()}
 
-      {/* 部品バルーン（全部品対応・リーダー線は外形線上から引き出す・BOM表と番号一致） */}
+      {/* 部品バルーン（全部品対応・外枠内に収める） */}
       {comps.map((c,i)=>{
         const cx = fOX + ((c.position?.x||0) + (c.width||0)/2)*scF;
         const cy = fOY + (OH - (c.position?.y||0) - (c.height||0)/2)*scF;
         // 図面外に出る部品はバルーン省略
         if (cx < fOX || cx > fOX+fW || cy < fOY || cy > fOY+fH) return null;
-        // リーダー線の起点：部品の右上コーナー（外形線上）
-        const ex = fOX + ((c.position?.x||0) + (c.width||0))*scF;
-        const ey = fOY + (OH - (c.position?.y||0) - (c.height||0))*scF;
-        const lx = ex + 18, ly = ey - 14;
+        // バルーンは部品中心の左上付近（外枠と干渉しない位置）
+        const bx = Math.min(Math.max(cx - 12, fOX + 10), fOX + fW - 20);
+        const by = Math.min(Math.max(cy - 12, fOY + 10), fOY + fH - 10);
         return <g key={i}>
-          <line x1={ex} y1={ey} x2={lx} y2={ly} stroke={C.dim} strokeWidth={0.5} strokeDasharray="3,2"/>
-          <circle cx={lx+9} cy={ly-4} r={8} fill="white" stroke={C.dim} strokeWidth={0.7}/>
-          <text x={lx+9} y={ly-1} textAnchor="middle" fill={C.dim} fontSize={7} fontFamily={MONO} fontWeight="700">{i+1}</text>
+          <line x1={cx} y1={cy} x2={bx} y2={by} stroke={C.dim} strokeWidth={0.5} strokeDasharray="3,2"/>
+          <circle cx={bx} cy={by} r={7} fill="white" stroke={C.dim} strokeWidth={0.7}/>
+          <text x={bx} y={by+2.5} textAnchor="middle" fill={C.dim} fontSize={7} fontFamily={MONO} fontWeight="700">{i+1}</text>
         </g>;
       })}
 
