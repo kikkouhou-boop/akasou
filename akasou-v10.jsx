@@ -178,9 +178,8 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
   const isDrawer = (part_name||"").includes("引き出し") || (part_name||"").includes("ドロワー");
 
   const fill   = pass==="fill"   ? (isDrawer?"#cdd4c0" : "#e0d8c8") : "none";
-  // rect外形線は描かない（外枠のOutlineRectが担う。内部線は別途描画）
-  const stroke = "none";
-  const sw     = 0;
+  const stroke = pass==="stroke" ? "#bbb" : "none";
+  const sw     = pass==="stroke" ? 0.5 : 0;
 
   if (shape==="cylinder") {
     const r = (W/2)*sc;
@@ -258,8 +257,8 @@ function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
   if (is_hidden) return null;
 
   const fill   = pass==="fill"   ? "#d8d0c0" : "none";
-  const stroke = "none";
-  const sw = 0;
+  const stroke = pass==="stroke" ? "#bbb" : "none";
+  const sw = pass==="stroke" ? 0.5 : 0;
 
   if (shape==="cylinder") {
     return <g>
@@ -305,8 +304,8 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
   }
 
   const fill   = pass==="fill"   ? "#e8e0d0" : "none";
-  const stroke = "none";
-  const sw = 0;
+  const stroke = pass==="stroke" ? "#bbb" : "none";
+  const sw = pass==="stroke" ? 0.5 : 0;
 
   if (shape==="cylinder") {
     const r=(W/2)*sc;
