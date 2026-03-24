@@ -466,7 +466,6 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         {sortedComps.map((c,i)=><CompFront key={`ff${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="fill"/>)}
         {sortedComps.map((c,i)=><CompFront key={`fs${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="stroke"/>)}
       </g>
-      <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
       {/* 中心線：縦（左右対称）のみ。横中心線は上下非対称なので引かない */}
       {(()=>{
         const allX = comps.map(c=>((c.position?.x||0)+(c.width||0)/2));
@@ -491,7 +490,6 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         {sortedComps.map((c,i)=><CompTop key={`tf${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="fill"/>)}
         {sortedComps.map((c,i)=><CompTop key={`ts${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="stroke"/>)}
       </g>
-      <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
 
       <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
@@ -500,7 +498,6 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         {sideSortedComps.map((c,i)=><CompSide key={`sf${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="fill"/>)}
         {sideSortedComps.map((c,i)=><CompSide key={`ss${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="stroke"/>)}
       </g>
-      <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
       <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
       {/* ── 細部寸法（天板厚・脚・幕板）── 全てクリック編集可 */}
@@ -604,6 +601,11 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
       })()}
 
       {/* 部品バルーン：非表示 */}
+
+      {/* ── 外枠3つを最後に描画（全要素の最前面に配置）── */}
+      <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
+      <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
+      <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
 
       {/* 表題欄 */}
       <rect x={14} y={SVG_H-TBH} width={SVG_W-28} height={TBH} fill="#f9f9f9" stroke="#333" strokeWidth={0.8}/>
