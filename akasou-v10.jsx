@@ -603,21 +603,7 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         return <g>{notes}</g>;
       })()}
 
-      {/* 部品バルーン（全部品対応・外枠内に収める） */}
-      {comps.map((c,i)=>{
-        const cx = fOX + ((c.position?.x||0) + (c.width||0)/2)*scF;
-        const cy = fOY + (OH - (c.position?.y||0) - (c.height||0)/2)*scF;
-        // 図面外に出る部品はバルーン省略
-        if (cx < fOX || cx > fOX+fW || cy < fOY || cy > fOY+fH) return null;
-        // バルーンは部品中心の左上付近（外枠と干渉しない位置）
-        const bx = Math.min(Math.max(cx - 12, fOX + 10), fOX + fW - 20);
-        const by = Math.min(Math.max(cy - 12, fOY + 10), fOY + fH - 10);
-        return <g key={i}>
-          <line x1={cx} y1={cy} x2={bx} y2={by} stroke={C.dim} strokeWidth={0.5} strokeDasharray="3,2"/>
-          <circle cx={bx} cy={by} r={7} fill="white" stroke={C.dim} strokeWidth={0.7}/>
-          <text x={bx} y={by+2.5} textAnchor="middle" fill={C.dim} fontSize={7} fontFamily={MONO} fontWeight="700">{i+1}</text>
-        </g>;
-      })}
+      {/* 部品バルーン：非表示 */}
 
       {/* 表題欄 */}
       <rect x={14} y={SVG_H-TBH} width={SVG_W-28} height={TBH} fill="#f9f9f9" stroke="#333" strokeWidth={0.8}/>
