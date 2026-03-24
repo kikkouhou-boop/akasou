@@ -355,15 +355,15 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
   // 外形線（全体）
   // 外枠：白塗り帯4本で内側の部品strokeを完全に隠してから黒枠を描く
   const OutlineRect = ({x,y,w,h}) => {
-    const bw = 3; // 白帯の幅（内側に3px分塗りつぶす）
+    const bw = 5; // 白帯の幅（内側に5px分塗りつぶす）
     return <>
       {/* 白塗り帯4本（上下左右の内側エッジを白で塗りつぶす） */}
       <rect x={x} y={y} width={w} height={bw} fill="white"/>
       <rect x={x} y={y+h-bw} width={w} height={bw} fill="white"/>
       <rect x={x} y={y} width={bw} height={h} fill="white"/>
       <rect x={x+w-bw} y={y} width={bw} height={h} fill="white"/>
-      {/* 外枠本体（黒・1.8px） */}
-      <rect x={x} y={y} width={w} height={h} fill="none" stroke="#111" strokeWidth={1.8}/>
+      {/* 外枠本体（黒・2.5px） */}
+      <rect x={x} y={y} width={w} height={h} fill="none" stroke="#111" strokeWidth={2.5}/>
     </>;
   };
 
@@ -476,9 +476,9 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         const avgZ = allZ.reduce((s,v)=>s+v,0)/allZ.length;
         const isSymZ = Math.abs(avgZ - OD/2) < OD*0.1;
         return <>
-          {isSymX && <line x1={fOX+fW/2} y1={fOY-8} x2={fOX+fW/2} y2={fOY+fH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
-          {isSymX && <line x1={tOX+tW/2} y1={tOY-8} x2={tOX+tW/2} y2={tOY+tD+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
-          {isSymZ && <line x1={sOX+sW/2} y1={sOY-8} x2={sOX+sW/2} y2={sOY+sH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          {isSymX && <line x1={fOX+fW/2} y1={fOY+2} x2={fOX+fW/2} y2={fOY+fH-2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          {isSymX && <line x1={tOX+tW/2} y1={tOY+2} x2={tOX+tW/2} y2={tOY+tD-2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          {isSymZ && <line x1={sOX+2} y1={sOY+sH/2} x2={sOX+sW-2} y2={sOY+sH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
         </>;
       })()}
       {/* OW：正面図上のみ（平面図には出さない） */}
