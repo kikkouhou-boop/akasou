@@ -223,7 +223,7 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
       </>}
       {/* 右扉（▷）：左端に仕切り線（はみ出しなし）＋左端→右中央 */}
       {isRightDoor && <>
-        <line x1={px+1} y1={py} x2={px+1} y2={py+h} stroke="#444" strokeWidth={0.8}/>
+        <line x1={px+3} y1={py} x2={px+3} y2={py+h} stroke="#444" strokeWidth={0.8}/>
         <line x1={px} y1={py}   x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
         <line x1={px} y1={py+h} x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
       </>}
