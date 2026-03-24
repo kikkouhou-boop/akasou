@@ -205,7 +205,7 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
       {/* ちり（散り）：内側に破線矩形で段差を表現 */}
       {chiri > 0 && (() => {
         const cp = Math.max(chiri * sc, 3);
-        const rw = Math.max(0, w - cp*2-2);
+        const rw = Math.max(0, w - cp*2-8);
         const rh = Math.max(0, h - cp*2);
         if (rw < 1 || rh < 1) return null;
         return <>
