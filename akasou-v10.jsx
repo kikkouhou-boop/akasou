@@ -199,7 +199,7 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
     </g>;
   }
   return <g>
-    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(h-2,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     {/* 扉描画：左扉・右扉・旧形式（互換）それぞれ独立描画 */}
     {isDoor && pass==="stroke" && <>
       {/* ちり（散り）：内側に破線矩形で段差を表現 */}
@@ -263,16 +263,16 @@ function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
   if (shape==="cylinder") {
     return <g>
       <ellipse cx={px+w/2} cy={py+h} rx={w/2} ry={w*0.15} fill={fill} stroke={stroke} strokeWidth={sw}/>
-      <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(h-2,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     </g>;
   }
   if (shape==="arc_panel" && arc_radius) {
     return <g>
-      <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray="4,2"/>
+      <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(h-2,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray="4,2"/>
     </g>;
   }
   return <g>
-    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(h-2,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
@@ -319,7 +319,7 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
     </g>;
   }
   return <g>
-    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(d,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(d-2,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={d} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
