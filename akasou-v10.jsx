@@ -355,7 +355,7 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
   // 外形線（全体）
   // 外枠：白塗り帯4本で内側の部品strokeを完全に隠してから黒枠を描く
   const OutlineRect = ({x,y,w,h}) => {
-    const bw = 5; // 白帯の幅（内側に5px分塗りつぶす）
+    const bw = 8; // 白帯の幅（内側に5px分塗りつぶす）
     return <>
       {/* 白塗り帯4本（上下左右の内側エッジを白で塗りつぶす） */}
       <rect x={x} y={y} width={w} height={bw} fill="white"/>
