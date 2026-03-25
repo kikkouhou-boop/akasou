@@ -209,7 +209,7 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
         const rh = Math.max(0, h - cp*2);
         if (rw < 1 || rh < 1) return null;
         return <>
-          <rect x={px+cp} y={py+cp} width={Math.min(rw, w - cp - 10)} height={rh}
+          <rect x={px+cp} y={py+cp} width={Math.min(rw, w - cp - 20)} height={rh}
             fill="none" stroke="#777" strokeWidth={0.7} strokeDasharray="3,2" opacity={0.8}/>
           {!isLeftDoor && (
             <text x={px+w/2} y={py-4} textAnchor="middle" fill="#888" fontSize={7} fontFamily={MONO}>ちり {chiri}mm</text>
