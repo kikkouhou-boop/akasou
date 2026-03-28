@@ -205,11 +205,12 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
       {/* ちり（散り）：内側に破線矩形で段差を表現 */}
       {chiri > 0 && (() => {
         const cp = Math.max(chiri * sc, 3);
-        const rw = Math.max(0, w - cp*2-8);
+        const rw = Math.max(0, w - cp*2);
         const rh = Math.max(0, h - cp*2);
         if (rw < 1 || rh < 1) return null;
+        const chiriW = isRightDoor ? w - cp*2 - 8 : rw;
         return <>
-          <rect x={px+cp} y={py+cp} width={Math.min(rw, w - cp - 20)} height={rh}
+          <rect x={px+cp} y={py+cp} width={Math.max(1, chiriW)} height={rh}
             fill="none" stroke="#777" strokeWidth={0.7} strokeDasharray="3,2" opacity={0.8}/>
           {!isLeftDoor && (
             <text x={px+w/2} y={py-4} textAnchor="middle" fill="#888" fontSize={7} fontFamily={MONO}>ちり {chiri}mm</text>
@@ -223,7 +224,7 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
       </>}
       {/* 右扉（▷）：左端に仕切り線（はみ出しなし）＋左端→右中央 */}
       {isRightDoor && <>
-        <line x1={px+3} y1={py} x2={px+3} y2={py+h} stroke="#444" strokeWidth={0.8}/>
+        <line x1={px+1} y1={py} x2={px+1} y2={py+h} stroke="#444" strokeWidth={0.8}/>
         <line x1={px} y1={py}   x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
         <line x1={px} y1={py+h} x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
       </>}
@@ -355,7 +356,7 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
   // 外形線（全体）
   // 外枠：白塗り帯4本で内側の部品strokeを完全に隠してから黒枠を描く
   const OutlineRect = ({x,y,w,h}) => {
-    const bw = 8; // 白帯の幅（内側に5px分塗りつぶす）
+    const bw = 8; // 白帯の幅（内側に8px分塗りつぶす）
     return <>
       {/* 白塗り帯4本（上下左右の内側エッジを白で塗りつぶす） */}
       <rect x={x} y={y} width={w} height={bw} fill="white"/>
