@@ -199,24 +199,10 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
     </g>;
   }
   return <g>
-    <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(h-2,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     {/* 扉描画：左扉・右扉・旧形式（互換）それぞれ独立描画 */}
     {isDoor && pass==="stroke" && <>
-      {/* ちり（散り）：内側に破線矩形で段差を表現 */}
-      {chiri > 0 && (() => {
-        const cp = Math.max(chiri * sc, 3);
-        const rw = Math.max(0, w - cp*2);
-        const rh = Math.max(0, h - cp*2);
-        if (rw < 1 || rh < 1) return null;
-        const chiriW = isRightDoor ? w - cp*2 - 8 : rw;
-        return <>
-          <rect x={px+cp} y={py+cp} width={Math.max(1, chiriW)} height={rh}
-            fill="none" stroke="#777" strokeWidth={0.7} strokeDasharray="3,2" opacity={0.8}/>
-          {!isLeftDoor && (
-            <text x={px+w/2} y={py-4} textAnchor="middle" fill="#888" fontSize={7} fontFamily={MONO}>ちり {chiri}mm</text>
-          )}
-        </>;
-      })()}
+      {/* ちり（散り）は断面詳細図で表現するため正面図には描かない（インテリア製図通則準拠） */}
       {/* 左扉（◁）：右端→左中央 */}
       {isLeftDoor && <>
         <line x1={px+w} y1={py}   x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
@@ -224,7 +210,7 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
       </>}
       {/* 右扉（▷）：左端に仕切り線（はみ出しなし）＋左端→右中央 */}
       {isRightDoor && <>
-       
+        <line x1={px} y1={py} x2={px} y2={py+h} stroke="#444" strokeWidth={0.8}/>
         <line x1={px} y1={py}   x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
         <line x1={px} y1={py+h} x2={px+w} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
       </>}
@@ -264,16 +250,16 @@ function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
   if (shape==="cylinder") {
     return <g>
       <ellipse cx={px+w/2} cy={py+h} rx={w/2} ry={w*0.15} fill={fill} stroke={stroke} strokeWidth={sw}/>
-      <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(h-2,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     </g>;
   }
   if (shape==="arc_panel" && arc_radius) {
     return <g>
-      <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(h-2,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray="4,2"/>
+      <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw} strokeDasharray="4,2"/>
     </g>;
   }
   return <g>
-    <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(h-2,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
@@ -320,7 +306,7 @@ function CompTop({ comp, ox,oy, sc, totalD, pass="fill" }) {
     </g>;
   }
   return <g>
-    <rect x={px+1} y={py+1} width={Math.max(w-2,1)} height={Math.max(d-2,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(d,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={d} dir={grain_direction==="縦目"?"v":"h"}/>}
   </g>;
 }
@@ -356,15 +342,15 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
   // 外形線（全体）
   // 外枠：白塗り帯4本で内側の部品strokeを完全に隠してから黒枠を描く
   const OutlineRect = ({x,y,w,h}) => {
-    const bw = 8; // 白帯の幅（内側に8px分塗りつぶす）
+    const bw = 3; // 白帯の幅（内側に3px分塗りつぶす）
     return <>
       {/* 白塗り帯4本（上下左右の内側エッジを白で塗りつぶす） */}
       <rect x={x} y={y} width={w} height={bw} fill="white"/>
       <rect x={x} y={y+h-bw} width={w} height={bw} fill="white"/>
       <rect x={x} y={y} width={bw} height={h} fill="white"/>
       <rect x={x+w-bw} y={y} width={bw} height={h} fill="white"/>
-      {/* 外枠本体（黒・2.5px） */}
-      <rect x={x} y={y} width={w} height={h} fill="none" stroke="#111" strokeWidth={2.5}/>
+      {/* 外枠本体（黒・1.8px） */}
+      <rect x={x} y={y} width={w} height={h} fill="none" stroke="#111" strokeWidth={1.8}/>
     </>;
   };
 
@@ -467,6 +453,7 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         {sortedComps.map((c,i)=><CompFront key={`ff${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="fill"/>)}
         {sortedComps.map((c,i)=><CompFront key={`fs${i}`} comp={c} ox={fOX} oy={fOY} sc={scF} totalH={OH} pass="stroke"/>)}
       </g>
+      <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
       {/* 中心線：縦（左右対称）のみ。横中心線は上下非対称なので引かない */}
       {(()=>{
         const allX = comps.map(c=>((c.position?.x||0)+(c.width||0)/2));
@@ -476,9 +463,9 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         const avgZ = allZ.reduce((s,v)=>s+v,0)/allZ.length;
         const isSymZ = Math.abs(avgZ - OD/2) < OD*0.1;
         return <>
-          {isSymX && <line x1={fOX+fW/2} y1={fOY+2} x2={fOX+fW/2} y2={fOY+fH-2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
-          {isSymX && <line x1={tOX+tW/2} y1={tOY+2} x2={tOX+tW/2} y2={tOY+tD-2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
-          {isSymZ && <line x1={sOX+2} y1={sOY+sH/2} x2={sOX+sW-2} y2={sOY+sH/2} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          {isSymX && <line x1={fOX+fW/2} y1={fOY-8} x2={fOX+fW/2} y2={fOY+fH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          {isSymX && <line x1={tOX+tW/2} y1={tOY-8} x2={tOX+tW/2} y2={tOY+tD+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
+          {isSymZ && <line x1={sOX+sW/2} y1={sOY-8} x2={sOX+sW/2} y2={sOY+sH+8} stroke="#888" strokeWidth={0.5} strokeDasharray={CL}/>}
         </>;
       })()}
       {/* OW：正面図上のみ（平面図には出さない） */}
@@ -491,6 +478,7 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         {sortedComps.map((c,i)=><CompTop key={`tf${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="fill"/>)}
         {sortedComps.map((c,i)=><CompTop key={`ts${i}`} comp={c} ox={tOX} oy={tOY} sc={scT} totalD={OD} pass="stroke"/>)}
       </g>
+      <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
 
       <Dim ax={tOX+tW} ay={tOY} bx={tOX+tW} by={tOY+tD} val={OD} gap={36} orient="v" onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
@@ -499,6 +487,7 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
         {sideSortedComps.map((c,i)=><CompSide key={`sf${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="fill"/>)}
         {sideSortedComps.map((c,i)=><CompSide key={`ss${i}`} comp={c} ox={sOX} oy={sOY} sc={scS} totalH={OH} pass="stroke"/>)}
       </g>
+      <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
       <Dim ax={sOX} ay={sOY} bx={sOX+sW} by={sOY} val={OD} gap={-32} onEdit={v=>onDimChange&&onDimChange("depth",v)}/>
 
       {/* ── 細部寸法（天板厚・脚・幕板）── 全てクリック編集可 */}
@@ -602,11 +591,6 @@ function Drawing2D({ data, svgRef, onDimChange, onCompDimChange }) {
       })()}
 
       {/* 部品バルーン：非表示 */}
-
-      {/* ── 外枠3つを最後に描画（全要素の最前面に配置）── */}
-      <OutlineRect x={fOX} y={fOY} w={fW} h={fH}/>
-      <OutlineRect x={tOX} y={tOY} w={tW} h={tD}/>
-      <OutlineRect x={sOX} y={sOY} w={sW} h={sH}/>
 
       {/* 表題欄 */}
       <rect x={14} y={SVG_H-TBH} width={SVG_W-28} height={TBH} fill="#f9f9f9" stroke="#333" strokeWidth={0.8}/>
