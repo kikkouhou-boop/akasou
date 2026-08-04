@@ -202,7 +202,23 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     {/* 扉描画：左扉・右扉・旧形式（互換）それぞれ独立描画 */}
     {isDoor && pass==="stroke" && <>
-      {/* ちり（散り）は断面詳細図で表現するため正面図には描かない（インテリア製図通則準拠） */}
+      {/* ちり（散り）：前板と框の段差を外周ラインで表示。中央の合わせ目辺は描かず二重線を回避 */}
+      {chiri > 0 && (() => {
+        const cp = Math.max(chiri * sc, 3);
+        const x0 = px + cp, x1 = px + w - cp, y0 = py + cp, y1 = py + h - cp;
+        if (x1 <= x0 || y1 <= y0) return null;
+        const chiriPath = isLeftDoor
+          ? `M ${x1} ${y0} L ${x0} ${y0} L ${x0} ${y1} L ${x1} ${y1}`   // 右（中央）を開放
+          : isRightDoor
+          ? `M ${x0} ${y0} L ${x1} ${y0} L ${x1} ${y1} L ${x0} ${y1}`   // 左（中央）を開放
+          : `M ${x0} ${y0} L ${x1} ${y0} L ${x1} ${y1} L ${x0} ${y1} Z`; // 単扉＝全周
+        return <>
+          <path d={chiriPath} fill="none" stroke="#777" strokeWidth={0.7} strokeDasharray="3,2" opacity={0.85}/>
+          {!isLeftDoor && (
+            <text x={px+w/2} y={py-4} textAnchor="middle" fill="#888" fontSize={7} fontFamily={MONO}>ちり {chiri}mm</text>
+          )}
+        </>;
+      })()}
       {/* 左扉（◁）：右端→左中央 */}
       {isLeftDoor && <>
         <line x1={px+w} y1={py}   x2={px} y2={py+h/2} stroke="#444" strokeWidth={0.7}/>
