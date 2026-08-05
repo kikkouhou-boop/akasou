@@ -253,12 +253,16 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
 // pass="stroke"→ 輪郭線のみ
 function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
   const { shape="rect", width:W=0, height:H=0, depth:D=0,
-    position:pos={}, grain_direction, arc_radius, arc_start_deg, arc_end_deg, is_hidden } = comp;
+    position:pos={}, grain_direction, arc_radius, arc_start_deg, arc_end_deg,
+    is_hidden, part_name="", chiri=0 } = comp;
   const px = (pos.z||0)*sc + ox;
   const py = oy + (totalH - (pos.y||0) - H)*sc;
   const w = D*sc, h = H*sc;
 
   if (is_hidden) return null;
+
+  const isDoor = (part_name||"").includes("扉") || (part_name||"").includes("ドア");
+  const isLeftDoor = isDoor && (part_name||"").includes("左");
 
   const fill   = pass==="fill"   ? "#d8d0c0" : "none";
   const stroke = pass==="stroke" ? "#bbb" : "none";
@@ -278,6 +282,24 @@ function CompSide({ comp, ox,oy, sc, totalH, pass="fill" }) {
   return <g>
     <rect x={px} y={py} width={Math.max(w,1)} height={Math.max(h,1)} fill={fill} stroke={stroke} strokeWidth={sw}/>
     {pass==="fill" && grain_direction && <Grain x={px} y={py} w={w} h={h} dir={grain_direction==="縦目"?"v":"h"}/>}
+    {/* ちり：正面図と同じ実隙間（天板下端〜扉上端）をここにも表示。扉ペアは重なって描かれるため左扉分は省略 */}
+    {isDoor && !isLeftDoor && pass==="stroke" && chiri > 0 && (() => {
+      const gapTop = py - chiri*sc;
+      const gapH = Math.max(chiri*sc, 1.5);
+      const label = `チリ${chiri}（天板-扉）`;
+      const fSize = 7;
+      const tLen = label.length * fSize * 0.62;
+      const pad = 2.5;
+      // ラベルは隙間の下＝扉ボックス内側の安全な位置に置く（タイル境界でのクリップ回避）
+      const bx = px + w + 8, by = py + fSize + 6;
+      return <g>
+        <rect x={px} y={gapTop} width={Math.max(w,1)} height={gapH} fill="#e74c3c" opacity={0.45}/>
+        <line x1={px+w} y1={gapTop+gapH/2} x2={bx} y2={by-fSize/2} stroke="#c0392b" strokeWidth={0.5} strokeDasharray="2,1.5"/>
+        <rect x={bx-2} y={by-fSize-pad} width={tLen+pad*2} height={fSize+pad*2}
+          fill="white" opacity={0.95} rx={1} stroke="#c0392b" strokeWidth={0.4}/>
+        <text x={bx-2+pad} y={by-2} fill="#c0392b" fontSize={fSize} fontFamily={MONO} fontWeight="700">{label}</text>
+      </g>;
+    })()}
   </g>;
 }
 
