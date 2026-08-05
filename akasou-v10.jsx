@@ -1809,6 +1809,11 @@ const PROMPT_OBSERVE = `このスケッチ画像から数値と情報を抽出�
 - アイソメ図（立体スケッチ）の場合：水平2方向の大きい数=幅、小さい数=奥行き、縦方向=高さ
 - 不明な項目は「不明」と書く
 
+- チリ（散り/ちり）＝扉の段差寸法。「天板と扉のチリ」のように"扉"と一緒に書かれた
+  チリの数値を読む（例：天板と扉のチリ＝10 なら10と書く）。
+  「本体と巾木のチリ」「側板と幕板のチリ」など"扉"を含まないチリは対象外（無視する）。
+  扉に関するチリの記載が無ければ「不明」
+
 【回答は必ずこの形式のみで答える。他の文章は一切書かない】
 タイトル：
 幅(W)：mm
@@ -1817,7 +1822,8 @@ const PROMPT_OBSERVE = `このスケッチ画像から数値と情報を抽出�
 板厚：mm
 扉：あり／なし／不明
 棚：あり／なし／不明
-引き出し：あり／なし／不明`;
+引き出し：あり／なし／不明
+チリ：mm／不明`;
 
 // Step2：JSON生成プロンプト（スキーマ完全固定版）
 const makePromptJSON = (observation) => `以下の観察記録から家具JSONを生成してください。
@@ -1831,6 +1837,7 @@ ${observation}
 - overall_dimensions.height = 観察記録の「高さ(H)」の数値をそのまま使う
 - overall_dimensions.depth  = 観察記録の「奥行き(D)」の数値をそのまま使う
 - 数値を変更・丸め・入れ替え禁止
+- door_chiri = 観察記録の「チリ」の数値。「不明」の場合は null（3などの推測値で埋めない）
 
 【部品の座標ルール（板厚=t として計算）】
 収納BOX（W=外寸幅, H=外寸高さ, D=外寸奥行き, t=板厚）の場合：
@@ -1848,6 +1855,7 @@ ${observation}
   "material": "",
   "finish": "",
   "overall_dimensions": { "width": 数値, "height": 数値, "depth": 数値 },
+  "door_chiri": 数値またはnull,
   "components": [
     {
       "part_name": "文字列",
@@ -2093,6 +2101,8 @@ export default function App() {
     const OW = parsed.overall_dimensions?.width || 0;
     const OH = parsed.overall_dimensions?.height || 0;
     const OD = parsed.overall_dimensions?.depth || 0;
+    // スケッチにチリの記載があればその数値を使う。無ければ標準値3mm
+    const doorChiri = parsed.door_chiri ?? 3;
 
     const fixed = {
       ...parsed,
@@ -2145,7 +2155,7 @@ export default function App() {
             width: halfW,
             height: OH - tw*2,
             depth: tw,
-            chiri: comp.chiri ?? 3,
+            chiri: comp.chiri ?? doorChiri,
             position: { x: isRight ? tw + halfW : tw, y: tw, z: 0 }
           };
         }
@@ -2158,7 +2168,7 @@ export default function App() {
             width: OW - tw*2,
             height: OH - tw*2,
             depth: tw,
-            chiri: comp.chiri ?? 3,
+            chiri: comp.chiri ?? doorChiri,
             position: { x: tw, y: tw, z: 0 }
           };
         }
@@ -2181,7 +2191,7 @@ export default function App() {
           const tw = 20;
           const OW2 = parsed.overall_dimensions?.width || 0;
           const OH2 = parsed.overall_dimensions?.height || 0;
-          return makeDoorPair(OW2, OH2, parsed.overall_dimensions?.depth||0, rest.chiri ?? 3);
+          return makeDoorPair(OW2, OH2, parsed.overall_dimensions?.depth||0, rest.chiri ?? doorChiri);
         }
         return [comp];
       })
@@ -2466,6 +2476,16 @@ export default function App() {
                   <span style={{fontSize:10,color:C.accent,fontFamily:MONO}}>{v} mm</span>
                 </div>
               ))}
+              {(() => {
+                const doorChiri = data.components?.find(c => c.part_name?.includes("扉"))?.chiri;
+                if (doorChiri == null) return null;
+                return (
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${C.border}`}}>
+                    <span style={{fontSize:10,color:C.sub}}>ちり</span>
+                    <span style={{fontSize:10,color:C.accent,fontFamily:MONO}}>{doorChiri} mm</span>
+                  </div>
+                );
+              })()}
               <div style={{marginTop:8,fontSize:10,color:C.sub}}>{data.components?.length||0}部品</div>
               {data.finish && <div style={{fontSize:10,color:C.sub,marginTop:2}}>{data.finish}</div>}
             </div>
