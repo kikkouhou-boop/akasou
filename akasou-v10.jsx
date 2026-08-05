@@ -214,9 +214,19 @@ function CompFront({ comp, ox,oy, sc, totalH, pass="fill" }) {
           : `M ${x0} ${y0} L ${x1} ${y0} L ${x1} ${y1} L ${x0} ${y1} Z`; // 単扉＝全周
         return <>
           <path d={chiriPath} fill="none" stroke="#777" strokeWidth={0.7} strokeDasharray="3,2" opacity={0.85}/>
-          {!isLeftDoor && (
-            <text x={px+w/2} y={py-4} textAnchor="middle" fill="#888" fontSize={7} fontFamily={MONO}>ちり {chiri}mm</text>
-          )}
+          {!isLeftDoor && (() => {
+            // 扉内部・右上角（対角線の起点と重ならない側）に白背景ボックスで表示
+            const label = `ちり${chiri}`;
+            const fSize = 7.5;
+            const tLen = label.length * fSize * 0.62;
+            const pad = 2.5;
+            const rx = x1 - 3, ry = y0 + fSize + 6;
+            return <g>
+              <rect x={rx-tLen-pad*2} y={ry-fSize-pad} width={tLen+pad*2} height={fSize+pad*2}
+                fill="white" opacity={0.92} rx={1} stroke="#1a56a8" strokeWidth={0.3}/>
+              <text x={rx-pad} y={ry-2} textAnchor="end" fill="#1a56a8" fontSize={fSize} fontFamily={MONO} fontWeight="700">{label}</text>
+            </g>;
+          })()}
         </>;
       })()}
       {/* 左扉（◁）：右端→左中央 */}
