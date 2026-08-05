@@ -1818,12 +1818,18 @@ const PROMPT_OBSERVE = `このスケッチ画像から数値と情報を抽出�
 
 【手順（必ずこの順番で行う）】
 STEP1：画像に書かれている数字を、位置の説明つきで漏れなくすべて書き出す。
-　例：「450：左上がりの辺」「20：左上の短い目盛り」のように、その数字がどの線・
-　どの場所に書かれているかを一言添える。読めない・写真で切れている数字も
+　各数字は桁数も一緒に書く。例：「450（3桁）：左上がりの辺」「20（2桁）：左上の短い目盛り」
+　のように、桁数→数値→位置の順で書く。読めない・写真で切れている数字も
 　「判読不能（だいたいの位置）」として記録する。
-STEP2：STEP1で書き出したリストだけを根拠に、下記ルールでW/H/D等を決める。
-　リストに存在しない数値を新たに作らない・推測で埋めない
-　（例：リストに無い「80」を幅や奥行きとして書いてはいけない）。
+STEP2（比率チェック）：アイソメ図の場合、天面（上部）から伸びる2方向の辺の数字を比べる。
+　片方がもう片方の1/3以下になるような極端な比率は、収納家具の天面として不自然
+　（通常1:1〜1:3程度）。その場合、桁を読み落としている可能性が高いので、
+　短く見える方の数字をもう一度見直す（末尾の「0」の見落とし、「9」を「8」と
+　誤読していないか）。それでも自信を持って桁を確定できない場合は、
+　その数字を単独の値として使わず「不明（○○と読めるが桁落ちの疑いあり）」とする。
+　存在しない数値を新たに作らない・自信のない代わりの数値を推測で当てはめない
+　（例：確信が持てないのに「800」等の別の数値に勝手に書き換えない）。
+STEP3：STEP1・STEP2の結果だけを根拠にW/H/D等を決める。
 
 【読み取りルール】
 - 「9」を「8」「0」と読まない。3桁の数字は必ず3桁で読む
@@ -1872,6 +1878,10 @@ ${observation}
 - overall_dimensions.depth  = 観察記録の「奥行き(D)」の数値をそのまま使う
 - 数値を変更・丸め・入れ替え禁止
 - door_chiri = 観察記録の「チリ」の数値。「不明」の場合は null（3などの推測値で埋めない）
+- dimension_warning = 観察記録の幅(W)/高さ(H)/奥行き(D)のいずれかが「不明」「疑い」
+  「要確認」「要現物確認」を含む場合、どの寸法にどんな懸念があるかを1文で要約する
+  （例：「奥行き80mmは桁落ちの疑いあり。現物を確認してください」）。
+  すべて確定的に読めていれば null にする（推測で懸念を作らない）
 
 【部品の座標ルール（板厚=t として計算）】
 収納BOX（W=外寸幅, H=外寸高さ, D=外寸奥行き, t=板厚）の場合：
@@ -1890,6 +1900,7 @@ ${observation}
   "finish": "",
   "overall_dimensions": { "width": 数値, "height": 数値, "depth": 数値 },
   "door_chiri": 数値またはnull,
+  "dimension_warning": "文字列またはnull",
   "components": [
     {
       "part_name": "文字列",
@@ -2646,6 +2657,18 @@ export default function App() {
               <div style={{fontSize:13,fontWeight:700,color:C.text}}>{confirmDims.furniture_name}</div>
             </div>
             <div style={{fontSize:11,color:C.sub,marginBottom:16}}>AIの推定値です。正しい数値に修正してから確定してください。</div>
+
+            {/* ── 寸法の読み取り警告（手書き数字の桁落ち・誤読の疑い） ── */}
+            {confirmDims.dimension_warning && (
+              <div style={{
+                display:"flex", gap:8, alignItems:"flex-start",
+                padding:"10px 12px", marginBottom:16,
+                background:"#3a1f00", border:`1px solid ${C.warn}`, borderRadius:8,
+              }}>
+                <span style={{fontSize:15}}>⚠️</span>
+                <div style={{fontSize:12, color:C.warn, lineHeight:1.5}}>{confirmDims.dimension_warning}</div>
+              </div>
+            )}
 
             {/* ── チャット修正UI ── */}
             <div style={{marginBottom:22}}>
